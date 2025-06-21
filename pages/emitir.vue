@@ -2,51 +2,79 @@
   <v-container>
     <h1 class="mb-4">Emitir Nuevo Documento Tributario</h1>
 
-    <v-dialog v-model="dialog" persistent max-width="600px">
+    <v-overlay :model-value="initialLoading" class="align-center justify-center" persistent>
+      <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
+    </v-overlay>
+
+    <v-dialog v-model="dialog.show" persistent max-width="800px">
       <v-card>
-        <v-card-title>
-          <span class="text-h5">Nuevo Cliente</span>
-        </v-card-title>
+        <v-card-title><span class="text-h5">Nuevo Cliente</span></v-card-title>
         <v-card-text>
-          <v-text-field label="Nombre Completo o Razón Social*" v-model="newClient.nombre" required></v-text-field>
-          <v-text-field label="NIT" v-model="newClient.nit"></v-text-field>
-          <v-text-field label="NRC" v-model="newClient.nrc"></v-text-field>
-          <v-text-field label="Correo Electrónico" v-model="newClient.correo" type="email"></v-text-field>
-          </v-card-text>
+          <v-row>
+            <v-col cols="12" md="8"><v-text-field label="Nombre Completo o Razón Social*" v-model="dialog.newClient.nombre" required></v-text-field></v-col>
+            <v-col cols="12" md="4"><v-text-field label="Nombre Comercial" v-model="dialog.newClient.nombre_comercial"></v-text-field></v-col>
+            <v-col cols="12" md="4"><v-text-field label="NIT" v-model="dialog.newClient.nit"></v-text-field></v-col>
+            <v-col cols="12" md="4"><v-text-field label="NRC" v-model="dialog.newClient.nrc"></v-text-field></v-col>
+            <v-col cols="12" md="4"><v-text-field label="Teléfono" v-model="dialog.newClient.telefono"></v-text-field></v-col>
+            <v-col cols="12" md="4"><v-text-field label="Código de Actividad" v-model="dialog.newClient.cod_actividad"></v-text-field></v-col>
+            <v-col cols="12" md="8"><v-text-field label="Descripción de Actividad" v-model="dialog.newClient.desc_actividad"></v-text-field></v-col>
+            <v-col cols="12"><v-text-field label="Correo Electrónico" v-model="dialog.newClient.correo" type="email"></v-text-field></v-col>
+          </v-row>
+          <v-card-text>
+            <v-row>
+              <v-divider class="my-3"></v-divider>
+              <v-col cols="12" md="6">
+                <v-select
+                  label="Otro Tipo de Documento (Para NRE)"
+                  v-model="dialog.newClient.tipo_documento"
+                  :items="[{title:'DUI', value:'13'}, {title:'Pasaporte', value:'03'}, {title:'Otro', value:'37'}]"
+                ></v-select>
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field 
+                  label="Número del Otro Documento"
+                  v-model="dialog.newClient.num_documento"
+                ></v-text-field>
+              </v-col>
+              <v-divider class="my-3"></v-divider>
+
+            </v-row>
+            </v-card-text>
+          <h4 class="mt-4">Dirección</h4>
+          <v-divider class="mb-2"></v-divider>
+          
+          <v-row>
+            <v-col cols="12" md="6">
+              <v-select label="Departamento" v-model="dialog.newClient.direccion.departamento" :items="locations" item-title="nombre" item-value="codigo"></v-select>
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-select label="Municipio" v-model="dialog.newClient.direccion.municipio" :items="filteredMunicipios" item-title="nombre" item-value="codigo" :disabled="!dialog.newClient.direccion.departamento"></v-select>
+            </v-col>
+          </v-row>
+          <v-textarea label="Complemento (Calle, # Casa, Colonia...)" v-model="dialog.newClient.direccion.complemento" rows="2"></v-textarea>
+        </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="grey-darken-1" variant="text" @click="dialog = false">Cancelar</v-btn>
-          <v-btn color="blue-darken-1" variant="text" @click="saveNewClient">Guardar</v-btn>
+          <v-btn color="grey-darken-1" variant="text" @click="closeDialog">Cancelar</v-btn>
+          <v-btn color="blue-darken-1" variant="text" @click="saveNewClient" :loading="dialog.loading">Guardar Cliente</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <v-card class="mt-4">
+    <v-card class="mt-4" :loading="loading" :disabled="initialLoading">
       <v-card-text>
         <v-form @submit.prevent="submitDTE">
           <v-row>
             <v-col cols="12" md="6">
-              <v-select
-                v-model="form.tipo_dte"
-                :items="documentTypes"
-                item-title="title"
-                item-value="value"
-                label="Tipo de Documento"
-                variant="outlined"
-              ></v-select>
+              <v-select v-model="form.tipo_dte" :items="documentTypes" item-title="title" item-value="value" label="Tipo de Documento" variant="outlined"></v-select>
             </v-col>
-            <v-col cols="12" md="6">
-                <v-select
-                    v-model="form.condicion_operacion"
-                    :items="[{title: 'Contado', value: '1'}, {title: 'A Crédito', value: '2'}]"
-                    label="Condición de la Operación"
-                    variant="outlined"
-                ></v-select>
+            <v-col v-if="form.tipo_dte !== '04'" cols="12" md="6">
+              <v-select v-model="form.condicion_operacion" :items="[{title: 'Contado', value: '1'}, {title: 'A Crédito', value: '2'}, {title: 'Otro', value: '3'}]" label="Condición de la Operación" variant="outlined"></v-select>
             </v-col>
           </v-row>
 
           <v-autocomplete
-            v-model="selectedClient"
+            v-model="form.cliente"
             v-model:search="searchTerm"
             :items="searchResults"
             :loading="searchLoading"
@@ -56,21 +84,56 @@
             placeholder="Escriba para buscar..."
             variant="outlined"
             class="mt-2"
+            clearable
           >
             <template v-slot:append>
-              <v-btn density="compact" color="primary" @click="dialog = true" icon="mdi-plus" title="Crear Nuevo Cliente"></v-btn>
+              <v-btn density="compact" color="primary" @click="openDialog" icon="mdi-plus" title="Crear Nuevo Cliente"></v-btn>
             </template>
             <template v-slot:item="{ props, item }">
               <v-list-item v-bind="props" :subtitle="`NIT: ${item.raw.nit || 'N/A'}`"></v-list-item>
             </template>
           </v-autocomplete>
+
+          <v-card 
+            v-if="form.tipo_dte === '03' && form.cliente?.id"
+            variant="tonal"
+            class="mt-4 mb-6 pa-3"
+          >
+            <div class="d-flex justify-space-between align-center mb-2">
+              <v-card-title class="pa-0">Datos del Receptor (CCFE)</v-card-title>
+              <v-btn size="small" variant="text" color="primary">Editar Cliente</v-btn>
+            </div>
+            
+            <v-row dense>
+              <v-col cols="12" md="4">
+                <p class="text-caption">NIT</p>
+                <p :class="!form.cliente.nit && 'text-error font-weight-bold'">{{ form.cliente.nit || 'REQUERIDO' }}</p>
+              </v-col>
+              <v-col cols="12" md="4">
+                <p class="text-caption">NRC</p>
+                <p :class="!form.cliente.nrc && 'text-error font-weight-bold'">{{ form.cliente.nrc || 'REQUERIDO' }}</p>
+              </v-col>
+              <v-col cols="12" md="4">
+                <p class="text-caption">Nombre Comercial</p>
+                <p :class="!form.cliente.nombre_comercial && 'text-error font-weight-bold'">{{ form.cliente.nombre_comercial || 'REQUERIDO' }}</p>
+              </v-col>
+              <v-col cols="12" md="8">
+                <p class="text-caption">Actividad Económica</p>
+                <p :class="!form.cliente.desc_actividad && 'text-error font-weight-bold'">{{ form.cliente.desc_actividad || 'REQUERIDO' }}</p>
+              </v-col>
+              <v-col cols="12" md="4">
+                <p class="text-caption">Correo Electrónico</p>
+                <p :class="!form.cliente.correo && 'text-error font-weight-bold'">{{ form.cliente.correo || 'REQUERIDO' }}</p>
+              </v-col>
+            </v-row>
+          </v-card>
           
-          <div v-if="form.tipo_dte === '03' && form.cliente.id">
+          <div v-if="form.tipo_dte === '03' && form.cliente?.id" class="mb-4">
             <p class="text-caption">Datos del Cliente Seleccionado:</p>
             <v-row dense>
-              <v-col cols="12" md="4"><v-text-field :model-value="form.cliente.nit" label="NIT" variant="underlined" readonly></v-text-field></v-col>
-              <v-col cols="12" md="4"><v-text-field :model-value="form.cliente.nrc" label="NRC" variant="underlined" readonly></v-text-field></v-col>
-              <v-col cols="12" md="4"><v-text-field :model-value="form.cliente.correo" label="Correo" variant="underlined" readonly></v-text-field></v-col>
+              <v-col cols="12" md="4"><v-text-field :model-value="form.cliente.nit" label="NIT" variant="underlined" readonly density="compact"></v-text-field></v-col>
+              <v-col cols="12" md="4"><v-text-field :model-value="form.cliente.nrc" label="NRC" variant="underlined" readonly density="compact"></v-text-field></v-col>
+              <v-col cols="12" md="4"><v-text-field :model-value="form.cliente.correo" label="Correo" variant="underlined" readonly density="compact"></v-text-field></v-col>
             </v-row>
           </div>
 
@@ -98,33 +161,34 @@
               </tr>
             </tbody>
             <tfoot v-if="subtotales.total > 0">
-                <tr>
-                    <td colspan="3" class="text-right font-weight-bold">SUBTOTAL</td>
-                    <td class="text-right font-weight-bold">${{ subtotales.subTotal.toFixed(2) }}</td>
-                    <td></td>
-                </tr>
-                 <tr v-if="form.tipo_dte === '03'">
-                    <td colspan="3" class="text-right font-weight-bold">IVA (13%)</td>
-                    <td class="text-right font-weight-bold">${{ subtotales.iva.toFixed(2) }}</td>
-                    <td></td>
-                </tr>
-                 <tr>
-                    <td colspan="3" class="text-right text-h6">TOTAL</td>
-                    <td class="text-right text-h6">${{ subtotales.total.toFixed(2) }}</td>
-                    <td></td>
-                </tr>
-            </tfoot>
+    
+              <tr v-if="form.tipo_dte !== '01'">
+                  <td colspan="3" class="text-right font-weight-bold">SUBTOTAL</td>
+                  <td class="text-right font-weight-bold">${{ subtotales.subTotal.toFixed(2) }}</td>
+                  <td></td>
+              </tr>
+
+              <tr v-if="form.tipo_dte === '03'">
+                  <td colspan="3" class="text-right font-weight-bold">IVA (13%)</td>
+                  <td class="text-right font-weight-bold">${{ subtotales.iva.toFixed(2) }}</td>
+                  <td></td>
+              </tr>
+
+              <tr>
+                  <td colspan="3" class="text-right text-h6">TOTAL</td>
+                  <td class="text-right text-h6">${{ subtotales.total.toFixed(2) }}</td>
+                  <td></td>
+              </tr>
+
+          </tfoot>
           </v-table>
         </v-form>
       </v-card-text>
-
       <v-divider></v-divider>
       <v-card-actions class="pa-4">
         <v-alert v-if="error" type="error" dense class="flex-grow-1 mr-4" :text="error"></v-alert>
         <v-spacer v-else></v-spacer>
-        <v-btn color="success" size="large" @click="submitDTE" :disabled="!isFormValid" :loading="loading">
-          Emitir Documento
-        </v-btn>
+        <v-btn color="success" size="large" @click="submitDTE" :disabled="!isFormValid" :loading="loading">Emitir Documento</v-btn>
       </v-card-actions>
     </v-card>
   </v-container>
@@ -133,22 +197,30 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useAuthStore } from '~/stores/auth';
+import { useNotificationStore } from '~/stores/notifications';
 
+// --- INICIALIZACIÓN ---
 const authStore = useAuthStore();
+const notificationStore = useNotificationStore();
 const router = useRouter();
 
-// Estado del Frontend
-const documentTypes = ref([]);
-const selectedClient = ref(null);
-const dialog = ref(false);
-const newClient = ref({ nombre: '', nit: '', nrc: '', correo: '' });
+// --- ESTADOS ---
+const initialLoading = ref(true);
 const loading = ref(false);
 const error = ref(null);
+const documentTypes = ref([]);
+const locations = ref([]);
+const searchLoading = ref(false);
+const searchResults = ref([]);
+const searchTerm = ref('');
+let searchTimeout = null;
+
+const genericClient = ref(null);
 
 const form = ref({
   tipo_dte: '01',
   condicion_operacion: '1',
-  cliente: {},
+  cliente: null, // Inicializamos como null para claridad
   items: [],
 });
 
@@ -158,97 +230,78 @@ const newItem = ref({
   precio_unitario: 0,
 });
 
-// Buscador
-const searchLoading = ref(false);
-const searchResults = ref([]);
-const searchTerm = ref('');
-let searchTimeout = null;
-
-// ---- LÓGICA DEL COMPONENTE ----
-
-// Al cargar, busca los tipos de DTE y el cliente por defecto
-onMounted(async () => {
-  try {
-    const [types, genericClient] = await Promise.all([
-      $fetch('http://localhost:8000/api/document-types', { headers: { 'Authorization': `Bearer ${authStore.token}` } }),
-      $fetch('http://localhost:8000/api/clients/search?term=CLIENTE VARIOS', { headers: { 'Authorization': `Bearer ${authStore.token}` } })
-    ]);
-    documentTypes.value = types;
-    console.log("Tipos de DTE cargados:", documentTypes.value);
-    
-    if(genericClient && genericClient.length > 0) {
-      selectedClient.value = genericClient[0];
-    }
-  } catch (error) {
-    console.error("Error al cargar datos iniciales:", error);
+const dialog = ref({
+  show: false,
+  loading: false,
+  newClient: {
+    nombre: '', nit: '', nrc: '', correo: '', nombre_comercial: '',
+    cod_actividad: '', desc_actividad: '', telefono: '',
+    direccion: { departamento: null, municipio: null, complemento: '' }
   }
 });
 
-// Observa cuando el usuario escribe para buscar
+// --- LÓGICA DE CARGA INICIAL ---
+onMounted(async () => {
+  initialLoading.value = true;
+  try {
+    const { $api } = useNuxtApp();
+    const [types, fetchedGenericClient, fetchedLocations] = await Promise.all([
+      $api('/api/document-types'),
+      $api('/api/clients/generic'),
+      $api('/api/locations')
+    ]);
+    
+    documentTypes.value = types;
+    locations.value = fetchedLocations;
+    
+    if (fetchedGenericClient && fetchedGenericClient.data.id) {
+      genericClient.value = fetchedGenericClient.data;
+      form.value.cliente = fetchedGenericClient.data; // Establecemos el cliente por defecto
+    }
+  } catch (err) {
+    notificationStore.showNotification({ message: 'No se pudieron cargar los datos iniciales.', color: 'error' });
+  } finally {
+    initialLoading.value = false;
+  }
+});
+
+watch(() => form.value.tipo_dte, (newType) => {
+  // Definimos una lista de los DTEs que no pueden usar un cliente genérico.
+  const requiresSpecificClient = ['03', '04', '05']; // CCFE, Nota de Remisión, Nota de Crédito
+
+  // Si el nuevo tipo de documento REQUIERE un cliente específico...
+  if (requiresSpecificClient.includes(newType)) {
+    // ...limpiamos la selección actual para forzar al usuario a buscar uno.
+    form.value.cliente = null;
+  } else {
+    // ...si NO lo requiere (como la Factura '01'), seleccionamos el cliente genérico.
+    form.value.cliente = genericClient.value;
+  }
+});
+
+// --- OBSERVADORES (WATCHERS) ---
 watch(searchTerm, (newVal) => {
+  // Evitamos que la búsqueda se dispare si el texto es el del cliente ya seleccionado
+  if (form.value.cliente && newVal === form.value.cliente.nombre) return;
+  
   clearTimeout(searchTimeout);
-  if (newVal && newVal.length >= 3) {
-    searchTimeout = setTimeout(() => {
-      fetchClients(newVal);
-    }, 500); // Espera 500ms antes de buscar (debounce)
+  if (newVal && newVal.length >= 2) {
+    searchTimeout = setTimeout(() => fetchClients(newVal), 500);
   } else {
     searchResults.value = [];
   }
 });
 
-// Observa cuando un cliente es seleccionado y actualiza el formulario
-watch(selectedClient, (client) => {
-  form.value.cliente = client || {};
+watch(() => dialog.value.newClient.direccion.departamento, () => {
+  dialog.value.newClient.direccion.municipio = null;
 });
 
-// Llama a la API de búsqueda
-async function fetchClients(term) {
-  searchLoading.value = true;
-  try {
-    const clients = await $fetch(`http://localhost:8000/api/clients/search?term=${term}`, {
-      headers: { 'Authorization': `Bearer ${authStore.token}` }
-    });
-    searchResults.value = clients;
-  } catch (e) {
-    console.error("Error buscando clientes:", e);
-  } finally {
-    searchLoading.value = false;
-  }
-};
-
-// Guarda un nuevo cliente desde el diálogo
-async function saveNewClient() {
-  if (!newClient.value.nombre) {
-    alert("El nombre es requerido.");
-    return;
-  }
-  try {
-    const savedClient = await $fetch('http://localhost:8000/api/clients', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${authStore.token}` },
-      body: newClient.value,
-    });
-    searchResults.value.unshift(savedClient);
-    selectedClient.value = savedClient;
-    dialog.value = false;
-    newClient.value = { nombre: '', nit: '', nrc: '', correo: '' };
-  } catch (error) {
-    alert("Error al guardar el cliente.");
-  }
-}
-
-// Lógica para añadir y quitar ítems
-function addItem() {
-  if (!newItem.value.descripcion || newItem.value.cantidad <= 0 || newItem.value.precio_unitario <= 0) return;
-  form.value.items.push({ ...newItem.value });
-  newItem.value = { descripcion: '', cantidad: 1, precio_unitario: 0 };
-}
-
-function removeItem(index) {
-  form.value.items.splice(index, 1);
-}
-
 // --- PROPIEDADES COMPUTADAS ---
+const filteredMunicipios = computed(() => {
+  if (!dialog.value.newClient.direccion.departamento) return [];
+  const selectedDept = locations.value.find(d => d.codigo === dialog.value.newClient.direccion.departamento);
+  return selectedDept ? selectedDept.municipios : [];
+});
 
 const precioUnitarioLabel = computed(() => 
   form.value.tipo_dte === '01' ? 'Precio Unitario (con IVA)' : 'Precio Unitario (sin IVA)'
@@ -268,35 +321,157 @@ const subtotales = computed(() => {
 });
 
 const isFormValid = computed(() => {
-  const clienteValido = !!form.value.cliente?.id || (form.value.tipo_dte === '01' && !!form.value.cliente?.nombre);
-  return clienteValido && form.value.items.length > 0 && !loading.value;
+  
+  let isClientValid = false;
+  const cliente = form.value.cliente;
+  
+
+  if (cliente) {
+    switch (form.value.tipo_dte) {
+      case '01': // Factura
+        isClientValid = !!cliente.nombre;
+        break;
+      
+      case '03': // Crédito Fiscal
+        isClientValid = !!cliente.nit && !!cliente.nrc && !!cliente.nombreComercial &&
+                        !!cliente.codActividad && !!cliente.descActividad && 
+                        !!cliente.direccion && !!cliente.telefono && !!cliente.correo;
+        break;
+
+      case '04': // Nota de Remisión
+        isClientValid = !!cliente.tipoDocumento && !!cliente.numDocumento && 
+                        !!cliente.nombre && !!cliente.direccion;
+        break;
+      
+      default:
+        isClientValid = false;
+    }
+  }
+  
+  // El formulario es válido si el cliente es válido, hay ítems, y no estamos en medio de otra operación.
+  return isClientValid && form.value.items.length > 0 && !loading.value;
 });
 
-// --- SUBMIT FINAL ---
+// --- MÉTODOS ---
+function openDialog() { dialog.value.show = true; }
+
+function closeDialog() {
+    dialog.value.show = false;
+    dialog.value.newClient = {
+        nombre: '', nit: '', nrc: '', correo: '', nombre_comercial: '',
+        cod_actividad: '', desc_actividad: '', telefono: '',
+        direccion: { departamento: null, municipio: null, complemento: '' }
+    };
+}
+
+async function fetchClients(term) {
+  searchLoading.value = true;
+  try {
+    const { $api } = useNuxtApp();
+    const response = await $api(`/api/clients/search?term=${term}`);
+    searchResults.value = response.data;
+  } catch (e) {
+    notificationStore.showNotification({ message: 'Error al buscar clientes.', color: 'error' });
+  } finally {
+    searchLoading.value = false;
+  }
+}
+
+async function saveNewClient() {
+  if (!dialog.value.newClient.nombre) {
+    return notificationStore.showNotification({ message: 'El nombre del cliente es requerido.', color: 'warning' });
+  }
+  dialog.value.loading = true;
+  try {
+    const { $api } = useNuxtApp();
+    const response = await $api('/api/clients', {
+      method: 'POST',
+      body: dialog.value.newClient,
+    });
+
+    const savedClientData = response.data;
+    
+    searchResults.value.unshift(savedClientData);
+    form.value.cliente = savedClientData;
+
+    notificationStore.showNotification({ message: 'Cliente guardado exitosamente.' });
+    closeDialog();
+  } catch (err) {
+    notificationStore.showNotification({ message: err.data?.message || 'Error al guardar el cliente.', color: 'error' });
+  } finally {
+    dialog.value.loading = false;
+  }
+}
+
+function addItem() {
+  if (!newItem.value.descripcion || newItem.value.cantidad <= 0 || newItem.value.precio_unitario <= 0) return;
+  form.value.items.push({ ...newItem.value });
+  newItem.value = { descripcion: '', cantidad: 1, precio_unitario: 0 };
+}
+
+function removeItem(index) {
+  form.value.items.splice(index, 1);
+}
 
 async function submitDTE() {
-  if (!isFormValid.value) return;
-
+  // Verificación inicial. Si el formulario no es válido, no hacemos nada.
+  if (!isFormValid.value) {
+    notificationStore.showNotification({ message: 'Formulario inválido. Revisa los datos del cliente y los ítems.', color: 'warning' });
+    return;
+  }
+  
   loading.value = true;
   error.value = null;
 
   try {
-    const response = await $fetch('http://localhost:8000/api/invoices', {
+    const { $api } = useNuxtApp();
+    
+    // El payload ahora es una copia directa y limpia del estado del formulario.
+    const payload = { ...form.value };
+    
+    // Hacemos la llamada a nuestro backend.
+    const response = await $api('/api/invoices', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${authStore.token}`, 'Accept': 'application/json' },
-      body: form.value,
+      body: payload,
     });
 
+    // Interpretamos la respuesta de NUESTRO backend.
     if (response.estado === 'PROCESADO') {
-      alert(`¡DTE Procesado! Sello: ${response.selloRecibido}`);
+      notificationStore.showNotification({ message: '¡DTE Procesado por Hacienda exitosamente!', color: 'success' });
       router.push('/historial');
+    } else if (response.estado === 'CONTINGENCIA' || response.estado === 'CONTINGENCIA_PENDIENTE') {
+      notificationStore.showNotification({ message: 'Hacienda no responde. El documento se guardó y se enviará más tarde.', color: 'info' });
+      resetForm(); // Limpiamos el formulario para el siguiente DTE.
     } else {
-      error.value = `Rechazado: ${response.observaciones?.join(', ')}`;
+      // Maneja otros posibles rechazos (ej. validación del backend que se nos escapó en el frontend).
+      const errorMsg = response.observaciones ? response.observaciones.join(', ') : 'Respuesta de rechazo no especificada.';
+      notificationStore.showNotification({ message: `Rechazado: ${errorMsg}`, color: 'error' });
     }
+
   } catch (err) {
-    error.value = err.data?.message || 'Ocurrió un error inesperado.';
+    // Este bloque maneja errores de conexión (Frontend -> Backend) o cualquier otro error inesperado.
+    console.error("Error en la petición de emisión:", err);
+    const errorMsg = err.data?.message || 'Error de conexión con el servidor. Por favor, revise su internet.';
+    notificationStore.showNotification({ 
+      message: errorMsg, 
+      color: 'error' 
+    });
   } finally {
+    // Nos aseguramos de que el estado de carga siempre se desactive.
     loading.value = false;
+  }
+}
+
+function resetForm() {
+  // Limpiamos la lista de ítems
+  form.value.items = [];
+  
+  // Volvemos a la lógica que define el cliente por defecto
+  const requiresSpecificClient = ['03', '04', '05'];
+  if (!requiresSpecificClient.includes(form.value.tipo_dte)) {
+      form.value.cliente = genericClient.value;
+  } else {
+      form.value.cliente = null;
   }
 }
 </script>

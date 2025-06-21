@@ -26,7 +26,14 @@
     </v-card-text>
     <v-card-actions>
       <v-spacer></v-spacer>
-      <v-btn color="primary" @click="handleLogin">Ingresar</v-btn>
+      <v-btn 
+        color="primary" 
+        @click="handleLogin"
+        :loading="loading"
+        :disabled="loading"
+      >
+        Ingresar
+      </v-btn>
     </v-card-actions>
   </v-card>
 </template>
@@ -45,9 +52,11 @@ const router = useRouter();
 const email = ref('');
 const password = ref('');
 const error = ref(null);
+const loading = ref(false);
 
 async function handleLogin() {
   error.value = null;
+  loading.value = true;
   try {
     // Le pedimos al store que maneje el login
     const loggedIn = await authStore.login({
@@ -61,6 +70,8 @@ async function handleLogin() {
     }
   } catch (e) {
     error.value = e.data?.message || 'No se pudo iniciar sesión.';
+  } finally {
+    loading.value = false; 
   }
 }
 </script>

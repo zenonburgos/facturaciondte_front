@@ -2,6 +2,41 @@
   <div>
     <client-only>
       <v-app>
+        <v-snackbar
+          v-model="notificationStore.show"
+          :color="notificationStore.color"
+          :timeout="4000"
+          location="top right"
+          variant="tonal"
+        >
+          {{ notificationStore.message }}
+          <template v-slot:actions>
+            <v-btn icon="mdi-close" @click="notificationStore.show = false"></v-btn>
+          </template>
+        </v-snackbar>
+        <!-- <v-alert
+          v-if="!authStore.isBackendOnline"
+          type="error"
+          density="compact"
+          class="text-center"
+          style="position: sticky; top: 0; z-index: 1005;"
+          tile
+        >
+          Se ha perdido la conexión con el servidor. Algunas funciones pueden no estar disponibles.
+        </v-alert> -->
+        <v-alert
+          v-if="authStore.isContingencyMode"
+          type="warning"
+          variant="tonal"
+          density="compact"
+          class="text-center"
+          style="position: sticky; top: 0; z-index: 1005;"
+          tile
+        >
+          <v-icon left>mdi-wifi-off</v-icon>
+          **MODO DE CONTINGENCIA ACTIVADO** - Los documentos se guardarán localmente para su envío posterior.
+          <v-btn size="small" variant="text" class="ml-4">Sincronizar</v-btn>
+        </v-alert>
         <v-navigation-drawer v-model="drawer" app>
           <v-list dense>
             <v-list-item link to="/">
@@ -27,7 +62,7 @@
           </v-list>
         </v-navigation-drawer>
 
-        <v-app-bar app>
+        <v-app-bar app style="z-index: 1010;">
           <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
           <v-toolbar-title>SmartDTE</v-toolbar-title>
           <v-spacer></v-spacer>
@@ -59,8 +94,10 @@
 <script setup>
 import { ref } from 'vue';
 import { useAuthStore } from '~/stores/auth'; // Importamos nuestro store
+import { useNotificationStore } from '~/stores/notifications';
 
 const authStore = useAuthStore();
+const notificationStore = useNotificationStore();
 const drawer = ref(true);
 
 async function handleLogout() {

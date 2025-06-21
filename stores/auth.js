@@ -5,20 +5,24 @@ export const useAuthStore = defineStore('auth', {
   state: () => ({
     token: useCookie('auth_token').value || null, // Leemos el token de una cookie si existe
     user: null,
+    backendStatus: 'online',
+    isContingencyMode: false,
   }),
 
   getters: {
     isAuthenticated: (state) => !!state.token,
+    //isBackendOnline: (state) => state.backendStatus === 'online',
   },
 
   actions: {
     async login(credentials) {
+      const { $api } = useNuxtApp();
       try {
-        // Limpiamos cualquier estado previo
-        this.logout();
+        await $api('/sanctum/csrf-cookie');
+        console.log("Cookie CSRF obtenida con éxito."); // Log para verificar
 
-        // Llamamos a la API de Laravel para iniciar sesión
-        const response = await $fetch('http://localhost:8000/api/login', {
+        // --- PASO 2: Ahora sí, intentamos el login con las credenciales ---
+        const response = await $api('/api/login', {
           method: 'POST',
           body: credentials,
         });
@@ -27,9 +31,9 @@ export const useAuthStore = defineStore('auth', {
           // Si es exitoso, guardamos el token y los datos del usuario
           this.setToken(response.access_token);
           this.setUser(response.user);
+          console.log("Login exitoso. Token y usuario guardados."); // Log para verificar
           return true;
         }
-        return false;
       } catch (error) {
         console.error('Error en el store de login:', error.data);
         throw error;
@@ -37,16 +41,14 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async logout() {
+      const { $api } = useNuxtApp();
       const router = useRouter(); // Obtenemos el router para redirigir
 
         // Primero, le decimos al backend que invalide el token
         try {
-            await $fetch('http://localhost:8000/api/logout', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.token}`
-                }
-            });
+            await $api('/api/logout', {
+              method: 'POST',
+          });
         } catch (error) {
             console.error("Error al cerrar sesión en el backend, pero se procederá con el logout local.", error);
         } finally {
@@ -70,6 +72,14 @@ export const useAuthStore = defineStore('auth', {
 
     setUser(user) {
       this.user = user;
-    }
+    },
+    
+    setBackendStatus(status) {
+      this.backendStatus = status;
+    },
+
+    // setContingencyMode(status) {
+    //   this.isContingencyMode = status;
+    // },
   },
 });
