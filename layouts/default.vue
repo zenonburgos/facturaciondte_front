@@ -53,6 +53,12 @@
               <v-list-item-title>Emitir DTE</v-list-item-title>
             </v-list-item>
 
+            <v-list-item link to="/liquidaciones">
+              <template v-slot:prepend>
+                <v-icon>mdi-scale-balance</v-icon> </template>
+              <v-list-item-title>Liquidaciones</v-list-item-title>
+            </v-list-item>
+
             <v-list-item link to="/historial">
               <template v-slot:prepend>
                 <v-icon>mdi-history</v-icon>
