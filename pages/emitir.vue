@@ -6,6 +6,35 @@
       <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
     </v-overlay>
 
+    <!-- dialogo para indicar si se transmite o no -->
+    <v-dialog v-model="resultDialog.show" persistent max-width="600px">
+      <v-card :color="resultDialog.success ? 'green-lighten-5' : 'red-lighten-5'">
+        <v-card-title class="d-flex align-center">
+          <v-icon 
+            :icon="resultDialog.success ? 'mdi-check-circle-outline' : 'mdi-alert-circle-outline'" 
+            :color="resultDialog.success ? 'success' : 'error'" 
+            class="mr-3"
+            size="large"
+          ></v-icon>
+          <span class="text-h5">{{ resultDialog.title }}</span>
+        </v-card-title>
+        
+        <v-card-text class="text-body-1 pt-4">
+          {{ resultDialog.message }}
+          <p v-if="resultDialog.details" class="text-caption mt-3">
+            <strong>Detalles:</strong> {{ resultDialog.details }}
+          </p>
+        </v-card-text>
+        
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="primary" variant="flat" @click="closeResultDialog">
+            Entendido
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <v-dialog v-model="dialog.show" persistent max-width="800px">
       <v-card>
         <v-card-title><span class="text-h5">Nuevo Cliente</span></v-card-title>
@@ -387,6 +416,14 @@ const mandanteSearchLoading = ref(false);
 const mandanteResults = ref([]);
 let mandanteSearchTimeout = null;
 
+const resultDialog = ref({
+  show: false,
+  success: false,
+  title: '',
+  message: '',
+  details: ''
+});
+
 const nuevoDocRetenido = ref({
     tipoDte: '03', // Por defecto, un CCF
     tipoDoc: 2,    // Por defecto, Electrónico
@@ -691,15 +728,30 @@ async function submitDTE() {
 
     // Interpretamos la respuesta de NUESTRO backend.
     if (response.estado === 'PROCESADO') {
-      notificationStore.showNotification({ message: '¡DTE Procesado por Hacienda exitosamente!', color: 'success' });
-      router.push('/historial');
+      resultDialog.value = {
+        show: true,
+        success: true,
+        title: 'Transmisión Exitosa',
+        message: 'El Documento Tributario Electrónico ha sido procesado y aceptado por el Ministerio de Hacienda.',
+        details: `Nº Control: ${response.numeroControl}`
+      };
     } else if (response.estado === 'CONTINGENCIA' || response.estado === 'CONTINGENCIA_PENDIENTE') {
-      notificationStore.showNotification({ message: 'Hacienda no responde. El documento se guardó y se enviará más tarde.', color: 'info' });
-      resetForm(); // Limpiamos el formulario para el siguiente DTE.
+      resultDialog.value = {
+        show: true,
+        success: true, // Lo marcamos como éxito para el usuario
+        title: 'Documento en Contingencia',
+        message: 'No hubo conexión con Hacienda. El documento se guardó correctamente y se enviará de forma automática más tarde.',
+        details: `Nº Control: ${response.numero_control}` // Nota: el campo puede variar
+      };
     } else {
-      // Maneja otros posibles rechazos (ej. validación del backend que se nos escapó en el frontend).
       const errorMsg = response.observaciones ? response.observaciones.join(', ') : 'Respuesta de rechazo no especificada.';
-      notificationStore.showNotification({ message: `Rechazado: ${errorMsg}`, color: 'error' });
+      resultDialog.value = {
+        show: true,
+        success: false,
+        title: 'Documento Rechazado',
+        message: 'Hacienda rechazó el documento. Por favor, revisa los detalles del error.',
+        details: errorMsg
+      };
     }
 
   } catch (err) {
@@ -789,5 +841,18 @@ function agregarDocumentoRetenido() {
 
 function eliminarDocumentoRetenido(index) {
   form.value.documentos_retenidos.splice(index, 1);
+}
+
+function closeResultDialog() {
+  const wasSuccess = resultDialog.value.success;
+  resultDialog.value.show = false; // Oculta el diálogo
+
+  if (wasSuccess) {
+    // Si la operación fue exitosa (PROCESADO o CONTINGENCIA),
+    // ahora sí, redirigimos al historial o limpiamos el formulario.
+    router.push('/historial');
+  }
+  // Si fue un error, no hacemos nada más, permitiendo al usuario
+  // quedarse en el formulario para corregir los datos.
 }
 </script>
