@@ -38,7 +38,7 @@
           <v-btn size="small" variant="text" class="ml-4">Sincronizar</v-btn>
         </v-alert>
         <v-navigation-drawer v-model="drawer" app>
-          <v-list dense>
+          <v-list dense class="safe-area-top">
             <v-list-item link to="/">
               <template v-slot:prepend>
                 <v-icon>mdi-view-dashboard</v-icon>
@@ -128,3 +128,12 @@ async function refreshToken() {
   }
 }
 </script>
+
+<style>
+/* Aplica el relleno solo en pantallas de 960px de ancho o menos (tablets y móviles) */
+@media (max-width: 960px) {
+  .safe-area-top {
+    padding-top: 64px;
+  }
+}
+</style>

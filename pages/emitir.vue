@@ -771,17 +771,27 @@ async function submitDTE() {
     }
 
   } catch (err) {
-    // Este bloque maneja errores de conexión (Frontend -> Backend) o cualquier otro error inesperado.
-    console.error("Error en la petición de emisión:", err);
-    const errorMsg = err.data?.message || 'Error de conexión con el servidor. Por favor, revise su internet.';
-    // notificationStore.showNotification({ 
-    //   message: errorMsg, 
-    //   color: 'error' 
-    // });
+    // 1. Ponemos valores por defecto para un error genérico (conexión, etc.).
+    let dialogTitle = 'Error de Transmisión';
+    let dialogMessage = 'No se pudo completar la solicitud. Revisa tu conexión a internet o contacta a soporte.';
+    let dialogDetails = err.data?.message || 'No hay detalles adicionales.';
+
+    // 2. Ahora, intentamos ser más específicos. 
+    //    Buscamos si el error viene de Hacienda (nuestro caso).
+    if (err.data && err.data.descripcionMsg) {
+      dialogTitle = 'Documento Rechazado por Hacienda';
+      dialogMessage = 'Hacienda ha rechazado el documento por la siguiente razón:';
+      // Usamos el mensaje específico de Hacienda como el detalle principal.
+      dialogDetails = err.data.descripcionMsg;
+    }
+
+    // 3. Mostramos el diálogo con la información correcta y específica.
     resultDialog.value = {
-      show: true, success: false, title: 'Error de Transmisión',
-      message: 'No se pudo completar la solicitud al servidor. Verifica tu conexión o contacta a soporte.',
-      details: errorMsg
+      show: true,
+      success: false,
+      title: dialogTitle,
+      message: dialogMessage,
+      details: dialogDetails
     };
   } finally {
     // Nos aseguramos de que el estado de carga siempre se desactive.
