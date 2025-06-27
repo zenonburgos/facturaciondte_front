@@ -28,8 +28,18 @@
         
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="primary" variant="flat" @click="closeResultDialog">
+
+          <v-btn color="primary" variant="text" @click="closeResultDialog">
             Entendido
+          </v-btn>
+
+          <v-btn
+            v-if="!resultDialog.success"
+            color="secondary"
+            variant="flat"
+            @click="retrySubmit"
+          >
+            Reintentar
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -845,14 +855,17 @@ function eliminarDocumentoRetenido(index) {
 
 function closeResultDialog() {
   const wasSuccess = resultDialog.value.success;
-  resultDialog.value.show = false; // Oculta el diálogo
+  resultDialog.value.show = false; // Siempre oculta el diálogo
 
   if (wasSuccess) {
-    // Si la operación fue exitosa (PROCESADO o CONTINGENCIA),
-    // ahora sí, redirigimos al historial o limpiamos el formulario.
+    // Solo redirigimos o reseteamos el form si fue un éxito
     router.push('/historial');
   }
-  // Si fue un error, no hacemos nada más, permitiendo al usuario
-  // quedarse en el formulario para corregir los datos.
+  // Si fue un error, no hacemos nada más. El usuario se queda en la página.
+}
+
+function retrySubmit() {
+  resultDialog.value.show = false; // Cierra el diálogo de error
+  submitDTE(); // Vuelve a intentar la misma sumisión
 }
 </script>
