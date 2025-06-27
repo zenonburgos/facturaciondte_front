@@ -156,7 +156,7 @@
             title="Invalidar Documento"
           ></v-btn>
 
-          <v-btn 
+          <!-- <v-btn 
             v-if="item.estado === 'PROCESADO' && item.tipo_dte === '03'" 
             icon="mdi-file-undo" 
             variant="text" 
@@ -164,7 +164,7 @@
             size="small" 
             @click="crearNotaDeCredito(item)"  
             title="Crear Nota de Crédito"
-          ></v-btn>
+          ></v-btn> -->
         </template>
       </v-data-table-server>
     </v-card>
@@ -301,9 +301,23 @@ async function downloadPdf(item) {
     // 2. Creamos una URL temporal en el navegador para este fichero binario.
     const objectUrl = URL.createObjectURL(pdfBlob);
 
-    // 3. Abrimos la URL temporal (que ya no necesita autenticación) en una nueva pestaña.
-    window.open(objectUrl, '_blank');
+    // 3. Creamos un elemento de enlace (<a>) temporal en memoria
+    const link = document.createElement('a');
+    link.href = objectUrl;
 
+    // 4. Asignamos el nombre de archivo para la descarga.
+    //    Usamos el numero_control si existe, si no, un trozo del código de generación.
+    link.download = `dte_${item.numero_control || item.codigo_generacion.slice(0,8)}.pdf`;
+
+    // 5. Añadimos el enlace al cuerpo del documento (es necesario para que funcione en todos los navegadores)
+    document.body.appendChild(link);
+
+    // 6. Simulamos un clic en el enlace para iniciar la descarga
+    link.click();
+
+    // 7. Eliminamos el enlace del cuerpo del documento para no dejar basura en el DOM
+    document.body.removeChild(link);
+    
     // 4. (Buena práctica) Liberamos la memoria del navegador después de un momento.
     setTimeout(() => URL.revokeObjectURL(objectUrl), 100);
 
