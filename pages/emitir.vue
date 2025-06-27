@@ -754,11 +754,17 @@ async function submitDTE() {
         details: `Nº Control: ${response.numero_control}` // Nota: el campo puede variar
       };
     } else {
+      // const errorMsg = response.observaciones ? response.observaciones.join(', ') : 'Respuesta de rechazo no especificada.';
+      // resultDialog.value = {
+      //   show: true,
+      //   success: false,
+      //   title: 'Documento Rechazado',
+      //   message: 'Hacienda rechazó el documento. Por favor, revisa los detalles del error.',
+      //   details: errorMsg
+      // };
       const errorMsg = response.observaciones ? response.observaciones.join(', ') : 'Respuesta de rechazo no especificada.';
       resultDialog.value = {
-        show: true,
-        success: false,
-        title: 'Documento Rechazado',
+        show: true, success: false, title: 'Documento Rechazado',
         message: 'Hacienda rechazó el documento. Por favor, revisa los detalles del error.',
         details: errorMsg
       };
@@ -768,10 +774,15 @@ async function submitDTE() {
     // Este bloque maneja errores de conexión (Frontend -> Backend) o cualquier otro error inesperado.
     console.error("Error en la petición de emisión:", err);
     const errorMsg = err.data?.message || 'Error de conexión con el servidor. Por favor, revise su internet.';
-    notificationStore.showNotification({ 
-      message: errorMsg, 
-      color: 'error' 
-    });
+    // notificationStore.showNotification({ 
+    //   message: errorMsg, 
+    //   color: 'error' 
+    // });
+    resultDialog.value = {
+      show: true, success: false, title: 'Error de Transmisión',
+      message: 'No se pudo completar la solicitud al servidor. Verifica tu conexión o contacta a soporte.',
+      details: errorMsg
+    };
   } finally {
     // Nos aseguramos de que el estado de carga siempre se desactive.
     loading.value = false;
