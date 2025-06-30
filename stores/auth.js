@@ -1,5 +1,6 @@
 // stores/auth.js
 import { defineStore } from 'pinia';
+import { useNotificationStore } from '~/stores/notifications';
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -16,6 +17,9 @@ export const useAuthStore = defineStore('auth', {
 
   actions: {
     async login(credentials) {
+      
+      const notificationStore = useNotificationStore();
+      notificationStore.show = false;
       const { $api } = useNuxtApp();
       try {
         await $api('/sanctum/csrf-cookie');
@@ -30,7 +34,8 @@ export const useAuthStore = defineStore('auth', {
         if (response.access_token) {
           // Si es exitoso, guardamos el token y los datos del usuario
           this.setToken(response.access_token);
-          this.setUser(response.user);
+          // this.setUser(response.user);
+          await this.fetchUser();
           console.log("Login exitoso. Token y usuario guardados."); // Log para verificar
           return true;
         }
@@ -61,6 +66,20 @@ export const useAuthStore = defineStore('auth', {
             // Redirigimos al usuario a la página de login
             await router.push('/login');
         }
+    },
+
+    async fetchUser() {
+      if (this.token) {
+        try {
+          const { $api } = useNuxtApp();
+          const fullUserData = await $api('/api/user'); 
+          this.setUser(fullUserData);
+          console.log("Usuario con permisos cargado en la tienda:", fullUserData);
+        } catch (error) {
+          console.error("Error al recuperar el usuario, token inválido.", error);
+          this.logout();
+        }
+      }
     },
 
     setToken(token) {

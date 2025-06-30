@@ -460,7 +460,7 @@ const searchLoadingDoc = ref(false);
 const searchResultsDoc = ref([]);
 let searchTimeoutDoc = null;
 
-//const genericClient = ref(null);
+const genericClient = ref(null);
 
 const tiposDeItem = ref([
     { title: 'Bien', value: 1 },
@@ -556,17 +556,17 @@ onMounted(async () => {
     const { $api } = useNuxtApp();
     const [types, fetchedGenericClient, fetchedLocations] = await Promise.all([
       $api('/api/document-types'),
-      //$api('/api/clients/generic'),
+      $api('/api/clients/generic'),
       $api('/api/locations')
     ]);
     
     documentTypes.value = types;
     locations.value = fetchedLocations;
     
-    // if (fetchedGenericClient && fetchedGenericClient.data.id) {
-    //   genericClient.value = fetchedGenericClient.data;
-    //   form.value.cliente = fetchedGenericClient.data; // Establecemos el cliente por defecto
-    // }
+    if (fetchedGenericClient && fetchedGenericClient.data.id) {
+      genericClient.value = fetchedGenericClient.data;
+      form.value.cliente = fetchedGenericClient.data; // Establecemos el cliente por defecto
+    }
 
     // --- LÓGICA PARA LEER PERMISOS DEL USUARIO ---
     if (authStore.isAuthenticated && authStore.user) {
@@ -588,19 +588,19 @@ onMounted(async () => {
   }
 });
 
-// watch(() => form.value.tipo_dte, (newType) => {
-//   // Definimos una lista de los DTEs que no pueden usar un cliente genérico.
-//   const requiresSpecificClient = ['03', '04', '05']; // CCFE, Nota de Remisión, Nota de Crédito
+watch(() => form.value.tipo_dte, (newType) => {
+  // Definimos una lista de los DTEs que no pueden usar un cliente genérico.
+  const requiresSpecificClient = ['03', '04', '05']; // CCFE, Nota de Remisión, Nota de Crédito
 
-//   // Si el nuevo tipo de documento REQUIERE un cliente específico...
-//   if (requiresSpecificClient.includes(newType)) {
-//     // ...limpiamos la selección actual para forzar al usuario a buscar uno.
-//     form.value.cliente = null;
-//   } else {
-//     // ...si NO lo requiere (como la Factura '01'), seleccionamos el cliente genérico.
-//     form.value.cliente = genericClient.value;
-//   }
-// });
+  // Si el nuevo tipo de documento REQUIERE un cliente específico...
+  if (requiresSpecificClient.includes(newType)) {
+    // ...limpiamos la selección actual para forzar al usuario a buscar uno.
+    form.value.cliente = null;
+  } else {
+    // ...si NO lo requiere (como la Factura '01'), seleccionamos el cliente genérico.
+    form.value.cliente = genericClient.value;
+  }
+});
 
 // --- OBSERVADORES (WATCHERS) ---
 watch(searchTerm, (newVal) => {

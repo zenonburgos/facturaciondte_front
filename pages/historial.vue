@@ -146,6 +146,17 @@
             :loading="item.pdfLoading" 
           ></v-btn>
 
+          <v-btn
+            v-if="item.json_enviado?.receptor?.telefono"
+            icon="mdi-whatsapp"
+            variant="text"
+            color="green"
+            size="small"
+            @click="shareOnWhatsApp(item)"
+            title="Enviar por WhatsApp"
+            :loading="item.whatsAppLoading" >
+          </v-btn>
+
           <v-btn 
             v-if="item.estado === 'PROCESADO' && item.tipo_dte === '01'" 
             icon="mdi-cancel" 
@@ -419,5 +430,43 @@ function applyFiltersAndReload() {
 function loadItemsWithOptions(newOptions) {
   tableOptions.value = newOptions;
   loadItems();
+}
+
+async function shareOnWhatsApp(item) {
+  // Mostramos un indicador de carga en el botón para mejor UX
+  item.whatsAppLoading = true;
+  
+  try {
+    const { $api } = useNuxtApp();
+    
+    // 1. Obtenemos la URL pública del PDF desde nuestro nuevo endpoint
+    const response = await $api(`/api/invoices/${item.codigo_generacion}/shareable-link`);
+    const pdfUrl = response.url;
+
+    // 2. Limpiamos y preparamos el número de teléfono
+    // Asumimos que el código de país para El Salvador es 503
+    let phone = item.json_enviado.receptor.telefono.replace(/[^0-9]/g, ''); // Quitamos guiones y espacios
+    if (phone.length === 8) {
+        phone = `503${phone}`; // Añadimos el código de país si no lo tiene
+    }
+
+    // 3. Creamos el mensaje pre-escrito
+    const message = encodeURIComponent(
+      `¡Hola! Aquí está su Documento Tributario Electrónico No. ${item.numero_control}.\n\nPuede descargarlo desde el siguiente enlace:\n${pdfUrl}`
+    );
+    
+    // 4. Construimos el enlace final de "Click-to-Chat"
+    const whatsappUrl = `https://wa.me/${phone}?text=${message}`;
+
+    // 5. Abrimos el enlace en una nueva pestaña
+    window.open(whatsappUrl, '_blank');
+
+  } catch (error) {
+    console.error("Error al generar enlace de WhatsApp:", error);
+    notificationStore.showNotification({ message: 'No se pudo generar el enlace para compartir.', color: 'error' });
+  } finally {
+    // Ocultamos el indicador de carga
+    item.whatsAppLoading = false;
+  }
 }
 </script>
