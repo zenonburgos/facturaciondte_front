@@ -435,6 +435,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import { useAuthStore } from '~/stores/auth';
 import { useNotificationStore } from '~/stores/notifications';
 
@@ -442,6 +443,7 @@ const { $api } = useNuxtApp();
 const authStore = useAuthStore();
 const notificationStore = useNotificationStore();
 const router = useRouter();
+const route = useRoute();
 
 // --- ESTADOS ---
 const initialLoading = ref(true);
@@ -581,8 +583,42 @@ onMounted(async () => {
             form.value.punto_de_venta_id = puntosDeVentaPermitidos.value[0].id;
         }
     }
+
+    // --- LÓGICA PARA CARGAR DATOS DESDE EL SISTEMA DE CRÉDITOS ---
+    const { telefono, nombre, monto, descripcion } = route.query;
+
+    if (telefono && nombre && monto && descripcion) {
+      notificationStore.showNotification({
+        message: 'Datos recibidos desde VFP. Buscando o creando cliente...',
+        color: 'info',
+      });
+
+      // 3. Llamamos a nuestro nuevo endpoint para que el backend haga el trabajo.
+      const clienteResponse = await $api('/api/clients/find-or-create-by-phone', {
+          method: 'POST',
+          body: { 
+              telefono: telefono,
+              nombre: decodeURIComponent(nombre) // Decodificamos el nombre
+          }
+      });
+      
+      // 4. Con el cliente que nos devuelve el backend, poblamos el formulario.
+      if (clienteResponse) {
+        form.value.cliente = clienteResponse.data;
+      }
+      
+      // 5. Pre-llenamos el ítem de la factura con los datos del abono.
+      newItem.value.descripcion = decodeURIComponent(descripcion);
+      newItem.value.precio_unitario = parseFloat(monto);
+      newItem.value.cantidad = 1;
+      newItem.value.tipoItem = 2; // Servicio
+      newItem.value.uniMedida = 99; // Otra
+
+      // Añadimos el ítem a la lista automáticamente.
+      addItem();
+    }
   } catch (err) {
-    notificationStore.showNotification({ message: 'No se pudieron cargar los datos iniciales.', color: 'error' });
+    notificationStore.showNotification({ message: 'No se pudieron cargar los datos iniciales desde sistema externo.', color: 'error' });
   } finally {
     initialLoading.value = false;
   }
