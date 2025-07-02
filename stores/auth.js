@@ -22,8 +22,8 @@ export const useAuthStore = defineStore('auth', {
       notificationStore.show = false;
       const { $api } = useNuxtApp();
       try {
-        await $api('/sanctum/csrf-cookie');
-        console.log("Cookie CSRF obtenida con éxito."); // Log para verificar
+        //await $api('/sanctum/csrf-cookie');
+        //console.log("Cookie CSRF obtenida con éxito."); // Log para verificar
 
         // --- PASO 2: Ahora sí, intentamos el login con las credenciales ---
         const response = await $api('/api/login', {

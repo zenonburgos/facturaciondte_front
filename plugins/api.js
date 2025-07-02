@@ -5,6 +5,9 @@ export default defineNuxtPlugin((nuxtApp) => {
   const config = useRuntimeConfig();
   const apiFetch = $fetch.create({
     baseURL: config.public.apiBaseUrl,
+
+    credentials: 'include', // Le dice al navegador que envíe las cookies.
+    
     onRequest({ options }) {
       const authStore = useAuthStore();
       if (authStore.token) {

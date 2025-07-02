@@ -40,7 +40,8 @@
 
 <script setup>
 import { ref } from 'vue';
-import { useAuthStore } from '~/stores/auth'; // Importamos nuestro store
+import { useAuthStore } from '~/stores/auth';
+import { useRoute, useRouter } from 'vue-router';
 
 definePageMeta({
   layout: 'login',
@@ -48,6 +49,7 @@ definePageMeta({
 
 const authStore = useAuthStore(); // Inicializamos el store
 const router = useRouter();
+const route = useRoute();
 
 const email = ref('');
 const password = ref('');
@@ -65,8 +67,16 @@ async function handleLogin() {
     });
 
     if (loggedIn) {
-      // Si el store confirma que el login fue exitoso, redirigimos
-      router.push('/');
+      // router.push('/');
+      // Después del login exitoso, revisamos si veníamos de una redirección.
+      if (route.query.redirect) {
+        // Si hay una ruta guardada, navegamos hacia ella.
+        // decodeURIComponent revierte la codificación que hicimos en el middleware.
+        router.push(decodeURIComponent(route.query.redirect));
+      } else {
+        // Si no, vamos al dashboard como siempre.
+        router.push('/');
+      }
     }
   } catch (e) {
     error.value = e.data?.message || 'No se pudo iniciar sesión.';
