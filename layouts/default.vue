@@ -66,7 +66,20 @@
               <v-list-item-title>Historial</v-list-item-title>
             </v-list-item>
           </v-list>
+
+          <v-list-item 
+            v-if="authStore.user?.roles?.some(role => role.name === 'Admin')" 
+            link 
+            to="/gestion/usuarios"
+          >
+            <template v-slot:prepend>
+              <v-icon>mdi-account-group</v-icon>
+            </template>
+            <v-list-item-title>Gestión de Usuarios</v-list-item-title>
+          </v-list-item>
         </v-navigation-drawer>
+
+        
 
         <v-app-bar app style="z-index: 1010;">
           <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
