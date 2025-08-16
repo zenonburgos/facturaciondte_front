@@ -1,7 +1,7 @@
 <template>
   <v-container>
     <h1 class="mb-4">Historial de Documentos Emitidos</h1>
-
+    
     <v-dialog v-model="invalidateDialog.show" persistent max-width="600px">
       <v-card>
         <v-card-title>
@@ -40,11 +40,33 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-
+    <v-dialog v-model="jsonDialog.show" max-width="900px" scrollable>
+      <v-card>
+        <v-card-title class="d-flex justify-space-between align-center">
+          <span class="text-h5">JSON Enviado a Hacienda</span>
+          <v-btn icon="mdi-close" variant="text" @click="jsonDialog.show = false"></v-btn>
+        </v-card-title>
+        <v-divider></v-divider>
+        <v-card-text>
+          <v-btn
+            prepend-icon="mdi-content-copy"
+            color="primary"
+            variant="tonal"
+            class="mb-4"
+            @click="copyJsonToClipboard"
+            size="small"
+          >
+            Copiar al Portapapeles
+          </v-btn>
+          <pre style="background-color: #2d2d2d; color: #f1f1f1; padding: 1rem; border-radius: 4px; white-space: pre-wrap; word-break: break-all;"><code>{{ jsonDialog.content }}</code></pre>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
     <v-card>
       <v-card-title>Filtros de Búsqueda</v-card-title>
 
       <v-card-text>
+        <v-form ref="form">
         <v-row>
           <v-col cols="12" sm="12" md="6">
             <v-text-field
@@ -84,12 +106,60 @@
             ></v-select>
           </v-col>
         </v-row>
-        <v-col cols="12" sm="12" md="2" class="d-flex ga-2">
-          <v-btn color="primary" @click="applyFiltersAndReload" block>Buscar</v-btn>
-          <v-btn variant="tonal" @click="clearFilters" title="Limpiar Filtros">
-            <v-icon>mdi-filter-remove</v-icon>
-          </v-btn>
-        </v-col>
+
+        <v-row class="mt-4 align-center">
+          <v-col cols="12" sm="6" md="3">
+            <v-text-field
+              v-model="filters.fecha_inicio"
+              label="Fecha Desde"
+              type="date"
+              density="compact"
+              variant="outlined"
+              hide-details="auto" clearable
+              :rules="dateRule"   ></v-text-field>
+          </v-col>
+          <v-col cols="12" sm="6" md="3">
+            <v-text-field
+              v-model="filters.fecha_fin"
+              label="Fecha Hasta"
+              type="date"
+              density="compact"
+              variant="outlined"
+              hide-details="auto" clearable
+              :rules="dateRule"   >
+            </v-text-field>
+          </v-col>
+
+          <v-col cols="12" sm="12" md="6" class="d-flex ga-2 flex-wrap">
+            <v-btn color="primary" @click="applyFiltersAndReload">
+              <v-icon start>mdi-magnify</v-icon>
+              Buscar
+            </v-btn>
+            <v-btn variant="tonal" @click="clearFilters" title="Limpiar Filtros">
+              <v-icon>mdi-filter-remove</v-icon>
+            </v-btn>
+            
+            <v-tooltip 
+              location="top" 
+              text="No hay datos para exportar con los filtros actuales"
+              :disabled="totalItems > 0" >
+              <template v-slot:activator="{ props }">
+                <div v-bind="props">
+                  <v-btn 
+                    color="success" 
+                    @click="exportToExcel"
+                    :loading="exportLoading"
+                    prepend-icon="mdi-file-excel"
+                    :disabled="totalItems === 0"
+                  >
+                    Exportar
+                  </v-btn>
+                </div>
+              </template>
+            </v-tooltip>
+          </v-col>
+        </v-row>
+        </v-form>
       </v-card-text>
       
       <v-divider></v-divider>
@@ -102,6 +172,13 @@
         :loading="loading"
         @update:options="loadItemsWithOptions"
       >
+      <template v-slot:no-data>
+        <div class="pa-4 text-center">
+          <v-icon size="x-large" color="grey-lighten-1" class="mb-2">mdi-magnify-remove-outline</v-icon>
+          <h4 class="text-grey-darken-1">No se encontraron resultados</h4>
+          <p class="text-grey-darken-2 text-body-2">Intente ajustar los filtros de búsqueda.</p>
+        </div>
+      </template>
         <template v-slot:item.tipo_dte="{ item }">
           <v-chip small :color="getDteColor(item.tipo_dte)" density="compact" size="small">{{ getDteName(item.tipo_dte) }}</v-chip>
         </template>
@@ -147,6 +224,16 @@
           ></v-btn>
 
           <v-btn
+              icon="mdi-code-json"
+              variant="text"
+              color="indigo-lighten-1"
+              size="small"
+              @click="viewJson(item)"
+              title="Ver JSON Enviado"
+              :loading="item.jsonLoading"
+            ></v-btn>
+
+          <v-btn
             v-if="item.json_enviado?.receptor?.telefono"
             icon="mdi-whatsapp"
             variant="text"
@@ -166,16 +253,6 @@
             @click.stop="openInvalidateDialog(item)"  
             title="Invalidar Documento"
           ></v-btn>
-
-          <!-- <v-btn 
-            v-if="item.estado === 'PROCESADO' && item.tipo_dte === '03'" 
-            icon="mdi-file-undo" 
-            variant="text" 
-            color="blue" 
-            size="small" 
-            @click="crearNotaDeCredito(item)"  
-            title="Crear Nota de Crédito"
-          ></v-btn> -->
         </template>
       </v-data-table-server>
     </v-card>
@@ -185,168 +262,231 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from '~/stores/auth';
-import { useNotificationStore } from '~/stores/notifications'; // La usaremos para la notificación de copiado
+import { useNotificationStore } from '~/stores/notifications';
 import { useRoute } from 'vue-router';
 
 const authStore = useAuthStore();
 const notificationStore = useNotificationStore();
 const route = useRoute();
 
-// --- ESTADO DE LA TABLA (se mantiene igual) ---
+const form = ref(null);
+
+const dateRule = [
+  value => {
+    if (!value) return true;
+    const date = new Date(value + 'T00:00:00');
+    if (isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+      return 'Fecha inválida.';
+    }
+    return true;
+  }
+];
+
+// --- ESTADO ---
 const serverItems = ref([]);
 const loading = ref(true);
 const totalItems = ref(0);
-const tableOptions = ref({
-  page: 1,
-  itemsPerPage: 10,
-  sortBy: [],
-});
+const tableOptions = ref({ page: 1, itemsPerPage: 10, sortBy: [] });
 
-// --- ESTADO DE LOS FILTROS (se mantiene igual) ---
+const getInitialDates = () => {
+  const date = new Date();
+  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+  const formatDate = (d) => d.toISOString().split('T')[0];
+  return { inicio: formatDate(firstDay), fin: formatDate(lastDay) };
+};
+
 const filters = ref({
   searchTerm: '',
   estado: null,
   tipo_dte: null,
+  fecha_inicio: getInitialDates().inicio,
+  fecha_fin: getInitialDates().fin,
 });
 
 const documentTypes = ref([]);
-const invalidateDialog = ref({
-  show: false,
-  dte: null,
-  motivo: '',
-  loading: false,
-});
+const exportLoading = ref(false);
+const invalidateDialog = ref({ show: false, dte: null, motivo: '', loading: false });
+const jsonDialog = ref({ show: false, content: '' });
 
-// === INICIO: CABECERAS DE TABLA ACTUALIZADAS ===
 const headers = [
   { title: 'Tipo', key: 'tipo_dte', sortable: false },
   { title: 'Número de Control', key: 'numero_control', sortable: false },
-  // Añadimos la nueva columna aquí
   { title: 'Código Generación', key: 'codigo_generacion', sortable: false },
   { title: 'Estado', key: 'estado' },
   { title: 'Fecha Procesamiento', key: 'fh_procesamiento' },
   { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
 ];
-// === FIN: CABECERAS DE TABLA ACTUALIZADAS ===
 
+// --- LÓGICA PRINCIPAL ---
 
-// === INICIO: NUEVA FUNCIÓN PARA COPIAR AL PORTAPAPELES ===
-async function copyToClipboard(text) {
+onMounted(async () => {
   try {
-    await navigator.clipboard.writeText(text);
-    notificationStore.showNotification({ message: '¡Código copiado!', color: 'info' });
-  } catch (err) {
-    console.error('Error al copiar: ', err);
-    notificationStore.showNotification({ message: 'No se pudo copiar el código.', color: 'error' });
+    const { $api } = useNuxtApp();
+    documentTypes.value = await $api('/api/document-types');
+  } catch (error) {
+    notificationStore.showNotification({ message: 'No se pudieron cargar los tipos de DTE.', color: 'error' });
   }
-}
-// === FIN: NUEVA FUNCIÓN ===
+  if (route.query.estado) {
+    filters.value.estado = route.query.estado;
+  }
+});
 
+function loadItemsWithOptions(newOptions) {
+  tableOptions.value = newOptions;
+  loadItems();
+}
 
 async function loadItems() {
-  console.trace(); 
   loading.value = true;
-  
   try {
     const { $api } = useNuxtApp();
     const params = new URLSearchParams({
       page: tableOptions.value.page,
       per_page: tableOptions.value.itemsPerPage,
-      ...(filters.value.searchTerm && { search: filters.value.searchTerm }),
-      ...(filters.value.estado && { estado: filters.value.estado }),
-      ...(filters.value.tipo_dte && { tipo_dte: filters.value.tipo_dte }),
     });
-
-    const url = `/api/invoices?${params.toString()}`;
-    const response = await $api(url);
-
-    // Verificamos si la respuesta tiene la estructura que esperamos ANTES de usarla.
-    if (response && typeof response === 'object' && 'data' in response && 'total' in response) {
-      serverItems.value = response.data;
+    if (filters.value.searchTerm) params.append('search', filters.value.searchTerm);
+    if (filters.value.estado) params.append('estado', filters.value.estado);
+    if (filters.value.tipo_dte) params.append('tipo_dte', filters.value.tipo_dte);
+    if (filters.value.fecha_inicio) params.append('fecha_inicio', filters.value.fecha_inicio);
+    if (filters.value.fecha_fin) params.append('fecha_fin', filters.value.fecha_fin);
+    
+    const response = await $api(`/api/invoices?${params.toString()}`);
+    if (response && Array.isArray(response.data)) {
+      serverItems.value = response.data.map(item => ({ ...item, pdfLoading: false, jsonLoading: false, whatsAppLoading: false }));
       totalItems.value = response.total;
-    } else {
-      // Si la estructura es incorrecta, lo registramos y mostramos una notificación.
-      console.error("Error de Estructura: La respuesta de la API no tiene el formato esperado {data, total}.", response);
-      notificationStore.showNotification({ message: 'La respuesta del servidor no fue válida.', color: 'error' });
     }
-
   } catch (error) {
-    // Si la llamada a $api falla (ej. error 500, 404), entrará aquí.
-    console.error("Error ATRAPADO en el bloque catch:", error);
-    notificationStore.showNotification({ message: 'No se pudo cargar el historial.', color: 'error' });
+    notificationStore.showNotification({ message: error.data?.message || 'No se pudo cargar el historial.', color: 'error' });
   } finally {
-    // Este bloque DEBE ejecutarse si no hay un error fatal que detenga el navegador.
     loading.value = false;
   }
 }
 
-onMounted(async () => {
-    try {
-        const { $api } = useNuxtApp();
-        const types = await $api('/api/document-types');
-        documentTypes.value = types;
-    } catch (error) {
-        console.error("Error al cargar los tipos de documento:", error);
-    }
+// --- LÓGICA DE FILTROS Y VALIDACIÓN ---
 
-    if (route.query.estado) {
-        filters.value.estado = route.query.estado;
-        applyFiltersAndReload();
-    }
-});
+function areDatesValid() {
+  const validate = (value) => {
+    if (!value) return true; // Permitir campos vacíos
+    const date = new Date(value + 'T00:00:00');
+    return !isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+  };
+
+  if (!validate(filters.value.fecha_inicio) || !validate(filters.value.fecha_fin)) {
+    notificationStore.showNotification({
+      message: 'Por favor, corrija las fechas. Una o ambas son inválidas (ej. 31 de Junio).',
+      color: 'error',
+    });
+    return false;
+  }
+  return true;
+}
+
+async function applyFiltersAndReload() {
+  console.log("Intentando validar el formulario..."); // <-- PRUEBA 1
+  const { valid } = await form.value.validate();
+  console.log("Resultado de la validación:", valid); // <-- PRUEBA 2
+
+  // Si no es válido, detenemos todo aquí
+  if (!valid) {
+    notificationStore.showNotification({
+      message: 'Por favor, corrija las fechas antes de buscar.',
+      color: 'warning',
+    });
+    return;
+  }
+  
+  // Si es válido, procedemos con la búsqueda
+  tableOptions.value.page = 1;
+  loadItems();
+}
+
+function clearFilters() {
+  const initialDates = getInitialDates();
+  filters.value = {
+    searchTerm: '',
+    estado: null,
+    tipo_dte: null,
+    fecha_inicio: initialDates.inicio,
+    fecha_fin: initialDates.fin,
+  };
+  applyFiltersAndReload();
+}
+
+async function exportToExcel() {
+  exportLoading.value = true;
+  try {
+    // Prepara los parámetros de los filtros
+    const params = new URLSearchParams();
+    if (filters.value.searchTerm) params.append('search', filters.value.searchTerm);
+    if (filters.value.estado) params.append('estado', filters.value.estado);
+    if (filters.value.tipo_dte) params.append('tipo_dte', filters.value.tipo_dte);
+    if (filters.value.fecha_inicio) params.append('fecha_inicio', filters.value.fecha_inicio);
+    if (filters.value.fecha_fin) params.append('fecha_fin', filters.value.fecha_fin);
+
+    const { $api } = useNuxtApp();
+    
+    // Apunta a la URL final y correcta
+    const url = `/api/invoices/export?${params.toString()}`;
+    
+    // Pide el archivo como 'blob'
+    const blob = await $api(url, { responseType: 'blob' });
+    
+    // Crea un enlace temporal para iniciar la descarga
+    const objectUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = `dtes_exportados_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(objectUrl);
+    
+  } catch (error) {
+    // Manejo de error para el usuario
+    console.error("Error al exportar:", error);
+    notificationStore.showNotification({ message: 'No se pudo generar el archivo Excel. Verifique los filtros.', color: 'error' });
+  } finally {
+    exportLoading.value = false;
+  }
+}
+
+// --- FUNCIONES DE AYUDA Y ACCIONES DE LA TABLA (COMPLETAS) ---
+
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    notificationStore.showNotification({ message: '¡Código copiado!', color: 'info' });
+  } catch (err) {
+    notificationStore.showNotification({ message: 'No se pudo copiar el código.', color: 'error' });
+  }
+}
 
 async function downloadPdf(item) {
-  // Para mostrar un indicador de carga en el botón y mejorar la UX
   item.pdfLoading = true; 
-  
   try {
     const { $api } = useNuxtApp();
     const url = `/api/invoices/${item.codigo_generacion}/pdf`;
-
-    // 1. Usamos $api para que la petición incluya el token de autorización.
-    //    Pedimos que la respuesta sea de tipo 'blob' (un fichero binario).
-    const pdfBlob = await $api(url, {
-      responseType: 'blob'
-    });
-
-    // 2. Creamos una URL temporal en el navegador para este fichero binario.
+    const pdfBlob = await $api(url, { responseType: 'blob' });
     const objectUrl = URL.createObjectURL(pdfBlob);
-
-    // 3. Creamos un elemento de enlace (<a>) temporal en memoria
     const link = document.createElement('a');
     link.href = objectUrl;
-
-    // 4. Asignamos el nombre de archivo para la descarga.
-    //    Usamos el numero_control si existe, si no, un trozo del código de generación.
     link.download = `dte_${item.numero_control || item.codigo_generacion.slice(0,8)}.pdf`;
-
-    // 5. Añadimos el enlace al cuerpo del documento (es necesario para que funcione en todos los navegadores)
     document.body.appendChild(link);
-
-    // 6. Simulamos un clic en el enlace para iniciar la descarga
     link.click();
-
-    // 7. Eliminamos el enlace del cuerpo del documento para no dejar basura en el DOM
     document.body.removeChild(link);
-    
-    // 4. (Buena práctica) Liberamos la memoria del navegador después de un momento.
     setTimeout(() => URL.revokeObjectURL(objectUrl), 100);
-
   } catch (error) {
-    console.error("Error al descargar el PDF:", error);
     notificationStore.showNotification({ message: 'No se pudo descargar el PDF.', color: 'error' });
   } finally {
-    // Nos aseguramos de ocultar siempre el indicador de carga
     item.pdfLoading = false; 
   }
 }
 
 function openInvalidateDialog(item) {
-  
   invalidateDialog.value.dte = item;
   invalidateDialog.value.motivo = '';
   invalidateDialog.value.show = true;
-
 }
 
 async function submitInvalidation() {
@@ -354,25 +494,20 @@ async function submitInvalidation() {
     notificationStore.showNotification({ message: 'Debe ingresar un motivo.', color: 'warning' });
     return;
   }
-  
   invalidateDialog.value.loading = true;
   const dteToInvalidate = invalidateDialog.value.dte;
   try {
     const { $api } = useNuxtApp();
     const response = await $api(`/api/invoices/${dteToInvalidate.codigo_generacion}/invalidation`, {
       method: 'POST',
-      body: {
-        tipo_invalidacion: '2', 
-        motivo: invalidateDialog.value.motivo,
-      }
+      body: { tipo_invalidacion: '2', motivo: invalidateDialog.value.motivo },
     });
-
     if (response.estado === 'PROCESADO') {
       notificationStore.showNotification({ message: '¡Documento invalidado exitosamente!', color: 'success' });
       invalidateDialog.value.show = false;
       loadItems(); 
     } else {
-      notificationStore.showNotification({ message: `Error al invalidar: ${response.observaciones?.join(', ')}`, color: 'error' });
+      notificationStore.showNotification({ message: `Error: ${response.observaciones?.join(', ')}`, color: 'error' });
     }
   } catch (error) {
     notificationStore.showNotification({ message: error.data?.message || 'Ocurrió un error al invalidar.', color: 'error' });
@@ -393,79 +528,63 @@ function getStatusColor(status) {
 }
 
 function getDteColor(type) {
-    const dte = documentTypes.value.find(t => t.value === type);
-    return dte ? 'primary' : 'grey';
+  const dte = documentTypes.value.find(t => t.value === type);
+  return dte ? 'primary' : 'grey';
 }
 
 function getDteName(type) {
-    const dte = documentTypes.value.find(t => t.value === type);
-    return dte ? dte.title : type;
+  const dte = documentTypes.value.find(t => t.value === type);
+  return dte ? dte.title : type;
 }
 
 function formatDateTime(dateTimeString) {
-    if (!dateTimeString) return 'N/A';
-    return new Date(dateTimeString).toLocaleString('es-SV', {
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit'
-    });
+  if (!dateTimeString) return 'N/A';
+  return new Date(dateTimeString).toLocaleString('es-SV', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit'
+  });
 }
 
-function clearFilters() {
-  filters.value = {
-    searchTerm: '',
-    estado: null,
-    tipo_dte: null,
-  };
-  // Llamamos a la función que ya teníamos para aplicar los filtros y recargar
-  applyFiltersAndReload();
+async function viewJson(item) {
+  item.jsonLoading = true;
+  try {
+    const { $api } = useNuxtApp();
+    const invoiceDetails = await $api(`/api/invoices/${item.codigo_generacion}`);
+    if (invoiceDetails && invoiceDetails.json_enviado) {
+      jsonDialog.value.content = JSON.stringify(invoiceDetails.json_enviado, null, 2);
+      jsonDialog.value.show = true;
+    }
+  } catch (error) {
+    notificationStore.showNotification({ message: 'No se pudo cargar el JSON del documento.', color: 'error' });
+  } finally {
+    item.jsonLoading = false;
+  }
 }
 
-// Asegúrate de que la función applyFiltersAndReload también exista
-function applyFiltersAndReload() {
-  tableOptions.value.page = 1;
-  loadItems();
-}
-
-// Y renombra tu función @update:options para evitar confusiones
-function loadItemsWithOptions(newOptions) {
-  tableOptions.value = newOptions;
-  loadItems();
+async function copyJsonToClipboard() {
+  if (!jsonDialog.value.content) return;
+  try {
+    await navigator.clipboard.writeText(jsonDialog.value.content);
+    notificationStore.showNotification({ message: '¡JSON copiado!', color: 'info' });
+  } catch (err) {
+    notificationStore.showNotification({ message: 'No se pudo copiar el JSON.', color: 'error' });
+  }
 }
 
 async function shareOnWhatsApp(item) {
-  // Mostramos un indicador de carga en el botón para mejor UX
   item.whatsAppLoading = true;
-  
   try {
     const { $api } = useNuxtApp();
-    
-    // 1. Obtenemos la URL pública del PDF desde nuestro nuevo endpoint
     const response = await $api(`/api/invoices/${item.codigo_generacion}/shareable-link`);
     const pdfUrl = response.url;
-
-    // 2. Limpiamos y preparamos el número de teléfono
-    // Asumimos que el código de país para El Salvador es 503
-    let phone = item.json_enviado.receptor.telefono.replace(/[^0-9]/g, ''); // Quitamos guiones y espacios
-    if (phone.length === 8) {
-        phone = `503${phone}`; // Añadimos el código de país si no lo tiene
-    }
-
-    // 3. Creamos el mensaje pre-escrito
-    const message = encodeURIComponent(
-      `¡Hola! Aquí está su Documento Tributario Electrónico No. ${item.numero_control}.\n\nPuede descargarlo desde el siguiente enlace:\n${pdfUrl}`
-    );
-    
-    // 4. Construimos el enlace final de "Click-to-Chat"
+    let phone = item.json_enviado.receptor.telefono.replace(/[^0-9]/g, '');
+    if (phone.length === 8) phone = `503${phone}`;
+    const message = encodeURIComponent(`¡Hola! Aquí está su Documento Tributario Electrónico No. ${item.numero_control}.\n\nPuede descargarlo desde el siguiente enlace:\n${pdfUrl}`);
     const whatsappUrl = `https://wa.me/${phone}?text=${message}`;
-
-    // 5. Abrimos el enlace en una nueva pestaña
     window.open(whatsappUrl, '_blank');
-
   } catch (error) {
-    console.error("Error al generar enlace de WhatsApp:", error);
     notificationStore.showNotification({ message: 'No se pudo generar el enlace para compartir.', color: 'error' });
   } finally {
-    // Ocultamos el indicador de carga
     item.whatsAppLoading = false;
   }
 }

@@ -67,16 +67,32 @@
             </v-list-item>
           </v-list>
 
-          <v-list-item 
-            v-if="authStore.user?.roles?.some(role => role.name === 'Admin')" 
-            link 
-            to="/gestion/usuarios"
-          >
-            <template v-slot:prepend>
-              <v-icon>mdi-account-group</v-icon>
-            </template>
-            <v-list-item-title>Gestión de Usuarios</v-list-item-title>
-          </v-list-item>
+          <v-list>
+            <v-list-subheader v-if="userHasRole(['Admin', 'Encargado de Negocio', 'Cajero'])">MANTENIMIENTO</v-list-subheader>
+
+            <v-list-item 
+              v-if="userHasRole(['Admin', 'Encargado de Negocio'])" 
+              link 
+              to="/gestion/usuarios"
+            >
+              <template v-slot:prepend>
+                <v-icon>mdi-account-group</v-icon>
+              </template>
+              <v-list-item-title>Gestión de Usuarios</v-list-item-title>
+            </v-list-item>
+
+            <v-list-item 
+              v-if="userHasRole(['Admin', 'Encargado de Negocio', 'Cajero'])" 
+              link 
+              to="/gestion/clientes"
+            >
+              <template v-slot:prepend>
+                <v-icon>mdi-account-supervisor-circle</v-icon>
+              </template>
+              <v-list-item-title>Gestión de Clientes</v-list-item-title>
+            </v-list-item>
+            
+          </v-list>
         </v-navigation-drawer>
 
         
@@ -139,6 +155,15 @@ async function refreshToken() {
   } finally {
     isRefreshing.value = false;
   }
+}
+
+function userHasRole(roles) {
+  // 1. Si no hay un usuario o no tiene roles, devuelve falso.
+  if (!authStore.user?.roles) return false;
+  
+  // 2. Comprueba si alguno de los roles del usuario (ej. 'Admin') 
+  //    está incluido en la lista de roles que permitimos (ej. ['Admin', 'Encargado de Negocio']).
+  return authStore.user.roles.some(userRole => roles.includes(userRole.name));
 }
 </script>
 
