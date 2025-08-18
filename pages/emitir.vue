@@ -556,14 +556,15 @@ onMounted(async () => {
   initialLoading.value = true;
   try {
     const { $api } = useNuxtApp();
-    const [types, fetchedGenericClient, fetchedLocations] = await Promise.all([
+    const [types, fetchedLocations] = await Promise.all([
       $api('/api/document-types'),
-      //$api('/api/clients/generic'),
       $api('/api/locations')
     ]);
     
     documentTypes.value = types;
     locations.value = fetchedLocations;
+
+    console.log("Datos de localidades recibidos de la API:", fetchedLocations);
     
     // if (fetchedGenericClient && fetchedGenericClient.data.id) {
     //   genericClient.value = fetchedGenericClient.data;
