@@ -1,21 +1,23 @@
 import { useAuthStore } from '~/stores/auth';
 
 export default defineNuxtRouteMiddleware((to, from) => {
-  const authStore = useAuthStore();
+  // --- La Lista de Invitados ---
+  // Rutas que NO requieren que el usuario haya iniciado sesión.
+  const publicRoutes = ['/login', '/register'];
 
-  // Si el usuario no está autenticado Y no está intentando ir a la página de login...
-  if (!authStore.isAuthenticated && to.path !== '/login') {
-    // return navigateTo('/login');
-    // Guardamos la ruta completa a la que se intentaba acceder (incluyendo los parámetros).
-    const redirectPath = encodeURIComponent(to.fullPath);
-    
-    // Redirigimos al login, pero ahora añadiendo la ruta guardada como un parámetro.
-    return navigateTo(`/login?redirect=${redirectPath}`);
+  // Si la ruta a la que se intenta acceder está en la lista pública,
+  // no hacemos nada y permitimos el acceso.
+  if (publicRoutes.includes(to.path)) {
+    return; // Permite la navegación
   }
-
-  // Si el usuario SÍ está autenticado y пытается ir a la página de login...
-  if (authStore.isAuthenticated && to.path === '/login') {
-    // ...lo redirigimos al dashboard porque ya tiene sesión.
-    return navigateTo('/');
+  
+  // --- Lógica del Guardia de Seguridad ---
+  // Si la ruta no es pública, revisamos si el usuario está autenticado.
+  const authStore = useAuthStore();
+  
+  if (!authStore.isAuthenticated) {
+    // Si NO está autenticado, lo enviamos al login, guardando la ruta
+    // a la que intentaba ir.
+    return navigateTo(`/login?redirect=${encodeURIComponent(to.fullPath)}`);
   }
 });
