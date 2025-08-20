@@ -83,6 +83,16 @@
               <v-text-field v-model="form.user_name" label="Tu Nombre Completo" :rules="[rules.required]" variant="outlined" density="compact"></v-text-field>
             </v-col>
             <v-col cols="12">
+              <v-text-field
+                v-model="form.user_username"
+                label="Nombre de Usuario (para iniciar sesión)"
+                :rules="[rules.required, rules.username]"
+                variant="outlined"
+                density="compact"
+                hint="Solo letras, números, guiones y guiones bajos."
+              ></v-text-field>
+            </v-col>
+            <v-col cols="12">
               <v-text-field v-model="form.user_email" label="Tu Correo (para el inicio de sesión)" :rules="[rules.required, rules.email]" type="email" variant="outlined" density="compact"></v-text-field>
             </v-col>
             <v-col cols="12" md="6">
@@ -152,6 +162,7 @@ const form = ref({
   mh_password_api: '',
   mh_password_certificado: '',
   user_name: '',
+  user_username: '',
   user_email: '',
   user_password: '',
   user_password_confirmation: '',
@@ -212,6 +223,7 @@ const rules = {
   email: value => /.+@.+\..+/.test(value) || 'Debe ser un correo electrónico válido.',
   password: value => (value && value.length >= 8) || 'La contraseña debe tener al menos 8 caracteres.',
   passwordConfirmation: value => value === form.value.user_password || 'Las contraseñas no coinciden.',
+  username: value => /^[a-zA-Z0-9_-]+$/.test(value) || 'Formato no válido. Solo letras, números, guiones y guiones bajos.',
 };
 
 async function handleRegister() {
