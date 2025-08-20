@@ -32,7 +32,7 @@
 <script setup>
 definePageMeta({
   layout: 'login', // O el layout que uses para páginas públicas y sin autenticación
-  auth: false
+  auth: 'guest' 
 });
 </script>
 
