@@ -59,6 +59,7 @@
 
     <v-card>
       <v-data-table-server
+        v-model:items-per-page="itemsPerPage"
         :headers="headers"
         :items="clients"
         :items-length="totalItems"
@@ -86,11 +87,14 @@ const notificationStore = useNotificationStore();
 
 // --- ESTADO ---
 const clients = ref([]);
-const loading = ref(true);
-const totalItems = ref(0);
+const locations = ref([]);
 const dialog = ref({ show: false, loading: false });
 const deleteDialog = ref({ show: false, loading: false, client: null });
-const locations = ref([]);
+
+// Estado para la tabla de servidor
+const loading = ref(true);
+const totalItems = ref(0);
+const itemsPerPage = ref(10); // Puedes cambiar el valor por defecto
 
 const defaultItem = {
   id: null,
@@ -100,7 +104,6 @@ const defaultItem = {
   tipo_documento: null, num_documento: null
 };
 const editedItem = ref({ ...defaultItem });
-
 const form = ref(null);
 
 const headers = [
@@ -115,7 +118,7 @@ const rules = {
   required: value => !!value || 'Este campo es requerido.',
 };
 
-// --- PROPIEDADES COMPUTADAS ---
+// --- LÓGICA QUE NO CAMBIA ---
 const formTitle = computed(() => (editedItem.value.id ? 'Editar Cliente' : 'Nuevo Cliente'));
 const filteredMunicipios = computed(() => {
   if (!editedItem.value.direccion?.departamento) return [];
@@ -123,35 +126,14 @@ const filteredMunicipios = computed(() => {
   return selectedDept ? selectedDept.municipios : [];
 });
 
-// --- WATCHERS ---
 watch(() => editedItem.value.direccion.departamento, () => {
   editedItem.value.direccion.municipio = null;
 });
 
-// --- MÉTODOS ---
 onMounted(async () => {
-  //await fetchClients();
   await fetchLocations();
+  // La tabla llamará a fetchClients por sí misma la primera vez
 });
-
-async function fetchClients(options) {
-  loading.value = true;
-  try {
-    // Construimos la URL con los parámetros de la paginación que nos da la tabla
-    const url = `/api/clients?page=${options.page}&per_page=${options.itemsPerPage}`;
-
-    const response = await $api(url);
-    
-    // Actualizamos tanto la lista de clientes como el total
-    clients.value = response.data;
-    totalItems.value = response.total; // response.total viene de la paginación de Laravel
-
-  } catch (error) {
-    notificationStore.showNotification({ message: 'Error al cargar los clientes.', color: 'error' });
-  } finally {
-    loading.value = false;
-  }
-}
 
 async function fetchLocations() {
     try {
@@ -161,14 +143,35 @@ async function fetchLocations() {
     }
 }
 
+// === LA FUNCIÓN fetchClients CORREGIDA ===
+async function fetchClients({ page, itemsPerPage, sortBy }) {
+  loading.value = true;
+  try {
+    const params = new URLSearchParams({
+      page: page,
+      per_page: itemsPerPage,
+      // Aquí podrías añadir lógica para el orden (sortBy) en el futuro si lo necesitas
+    });
+
+    const response = await $api(`/api/clients?${params.toString()}`);
+    
+    clients.value = response.data;
+    totalItems.value = response.total; // response.total viene de la paginación de Laravel
+  } catch (error) {
+    notificationStore.showNotification({ message: 'Error al cargar los clientes.', color: 'error' });
+  } finally {
+    loading.value = false;
+  }
+}
+
 function openNewClientDialog() {
-  editedItem.value = JSON.parse(JSON.stringify(defaultItem)); // Copia profunda para evitar reactividad cruzada
+  editedItem.value = JSON.parse(JSON.stringify(defaultItem));
   dialog.value.show = true;
 }
 
 function openEditDialog(item) {
-  editedItem.value = JSON.parse(JSON.stringify(item)); // Copia profunda para editar sin afectar la tabla
-  if (!editedItem.value.direccion) { // Asegura que el objeto dirección exista
+  editedItem.value = JSON.parse(JSON.stringify(item));
+  if (!editedItem.value.direccion) {
     editedItem.value.direccion = { departamento: null, municipio: null, complemento: '' };
   }
   dialog.value.show = true;
@@ -191,14 +194,12 @@ async function saveClient() {
   dialog.value.loading = true;
   try {
     if (editedItem.value.id) {
-      // Actualizar
       await $api(`/api/clients/${editedItem.value.id}`, {
         method: 'PUT',
         body: editedItem.value,
       });
       notificationStore.showNotification({ message: 'Cliente actualizado exitosamente.' });
     } else {
-      // Crear
       await $api('/api/clients', {
         method: 'POST',
         body: editedItem.value,
@@ -206,7 +207,8 @@ async function saveClient() {
       notificationStore.showNotification({ message: 'Cliente creado exitosamente.' });
     }
     closeDialogs();
-    fetchClients(); // Recargar la lista
+    // Forzamos a que la tabla se recargue pidiendo la primera página
+    fetchClients({ page: 1, itemsPerPage: itemsPerPage.value });
   } catch (error) {
     const message = error.data?.message || 'Ocurrió un error al guardar el cliente.';
     notificationStore.showNotification({ message, color: 'error' });
@@ -223,7 +225,8 @@ async function confirmDelete() {
         });
         notificationStore.showNotification({ message: 'Cliente eliminado.' });
         closeDialogs();
-        fetchClients(); // Recargar la lista
+        // Forzamos a que la tabla se recargue pidiendo la primera página
+        fetchClients({ page: 1, itemsPerPage: itemsPerPage.value });
     } catch (error) {
         const message = error.data?.message || 'No se pudo eliminar el cliente.';
         notificationStore.showNotification({ message, color: 'error' });
