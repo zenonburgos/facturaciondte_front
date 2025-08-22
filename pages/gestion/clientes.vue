@@ -58,18 +58,20 @@
     </v-dialog>
 
     <v-card>
-      <v-data-table
+      <v-data-table-server
         :headers="headers"
         :items="clients"
+        :items-length="totalItems"
         :loading="loading"
         item-value="id"
         class="elevation-1"
+        @update:options="fetchClients"
       >
         <template v-slot:item.actions="{ item }">
           <v-icon class="me-2" @click="openEditDialog(item)">mdi-pencil</v-icon>
           <v-icon @click="openDeleteDialog(item)" :disabled="item.is_generic">mdi-delete</v-icon>
         </template>
-      </v-data-table>
+      </v-data-table-server>
     </v-card>
   </v-container>
 </template>
@@ -85,6 +87,7 @@ const notificationStore = useNotificationStore();
 // --- ESTADO ---
 const clients = ref([]);
 const loading = ref(true);
+const totalItems = ref(0);
 const dialog = ref({ show: false, loading: false });
 const deleteDialog = ref({ show: false, loading: false, client: null });
 const locations = ref([]);
@@ -127,15 +130,22 @@ watch(() => editedItem.value.direccion.departamento, () => {
 
 // --- MÉTODOS ---
 onMounted(async () => {
-  await fetchClients();
+  //await fetchClients();
   await fetchLocations();
 });
 
-async function fetchClients() {
+async function fetchClients(options) {
   loading.value = true;
   try {
-    const response = await $api('/api/clients');
+    // Construimos la URL con los parámetros de la paginación que nos da la tabla
+    const url = `/api/clients?page=${options.page}&per_page=${options.itemsPerPage}`;
+
+    const response = await $api(url);
+    
+    // Actualizamos tanto la lista de clientes como el total
     clients.value = response.data;
+    totalItems.value = response.total; // response.total viene de la paginación de Laravel
+
   } catch (error) {
     notificationStore.showNotification({ message: 'Error al cargar los clientes.', color: 'error' });
   } finally {
