@@ -903,7 +903,7 @@ async function submitDTE() {
         success: true, // Lo marcamos como éxito para el usuario
         title: 'Documento en Contingencia',
         message: 'No hubo conexión con Hacienda. El documento se guardó correctamente y se enviará de forma automática más tarde.',
-        details: `Nº Control: ${response.numero_control}` // Nota: el campo puede variar
+        details: `Nº Control: ${response.numeroControl}` // Nota: el campo puede variar
       };
     } else {
       // const errorMsg = response.observaciones ? response.observaciones.join(', ') : 'Respuesta de rechazo no especificada.';
