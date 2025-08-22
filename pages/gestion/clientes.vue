@@ -156,7 +156,7 @@ async function fetchClients({ page, itemsPerPage, sortBy }) {
     const response = await $api(`/api/clients?${params.toString()}`);
     
     clients.value = response.data;
-    totalItems.value = response.total; // response.total viene de la paginación de Laravel
+    totalItems.value = response.meta.total;
   } catch (error) {
     notificationStore.showNotification({ message: 'Error al cargar los clientes.', color: 'error' });
   } finally {
