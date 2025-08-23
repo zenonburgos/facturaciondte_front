@@ -22,6 +22,26 @@
               <v-col cols="12" md="8"><v-text-field label="Descripción de Actividad" v-model="editedItem.desc_actividad"></v-text-field></v-col>
               <v-col cols="12"><v-text-field label="Correo Electrónico" v-model="editedItem.correo" type="email"></v-text-field></v-col>
             </v-row>
+            <!-- SECCIÓN PARA OTROS DOCUMENTOS (DUI, Pasaporte, etc.) -->
+            <v-divider class="my-4"></v-divider>
+            <v-row>
+                <v-col cols="12" md="6">
+                    <v-select
+                        label="Otro Tipo de Documento"
+                        v-model="editedItem.tipo_documento"
+                        :items="[{title:'DUI', value:'13'}, {title:'Pasaporte', value:'03'}, {title:'Otro', value:'37'}]"
+                        clearable
+                    ></v-select>
+                </v-col>
+                <v-col cols="12" md="6">
+                    <v-text-field 
+                        label="Número del Otro Documento"
+                        v-model="editedItem.num_documento"
+                        :disabled="!editedItem.tipo_documento"
+                    ></v-text-field>
+                </v-col>
+            </v-row>
+            <v-divider class="my-4"></v-divider>
             <h4 class="mt-4">Dirección</h4>
             <v-divider class="mb-2"></v-divider>
             <v-row>
@@ -58,15 +78,32 @@
     </v-dialog>
 
     <v-card>
+      <!-- CAMPO DE BÚSQUEDA -->
+      <v-card-title>
+        <v-text-field
+          v-model="searchTerm"
+          append-inner-icon="mdi-magnify"
+          label="Buscar por Nombre, NIT, NRC o Teléfono"
+          variant="outlined"
+          density="compact"
+          hide-details
+          clearable
+        ></v-text-field>
+      </v-card-title>
+      
+    </v-card>
+
+    <v-card>
       <v-data-table-server
-        v-model:items-per-page="itemsPerPage"
+        v-model:items-per-page="tableOptions.itemsPerPage"
         :headers="headers"
         :items="clients"
         :items-length="totalItems"
         :loading="loading"
+        :search="searchTerm"
         item-value="id"
         class="elevation-1"
-        @update:options="fetchClients"
+        @update:options="loadItems"
       >
         <template v-slot:item.actions="{ item }">
           <v-icon class="me-2" @click="openEditDialog(item)">mdi-pencil</v-icon>
@@ -94,7 +131,15 @@ const deleteDialog = ref({ show: false, loading: false, client: null });
 // Estado para la tabla de servidor
 const loading = ref(true);
 const totalItems = ref(0);
-const itemsPerPage = ref(10); // Puedes cambiar el valor por defecto
+const searchTerm = ref('');
+const tableOptions = ref({
+  page: 1,
+  itemsPerPage: 15,
+  sortBy: [],
+});
+
+// --- CORRECCIÓN 1: Variable para el "debouncing" de la búsqueda ---
+let searchTimeout = null;
 
 const defaultItem = {
   id: null,
@@ -130,9 +175,20 @@ watch(() => editedItem.value.direccion.departamento, () => {
   editedItem.value.direccion.municipio = null;
 });
 
+// --- CORRECCIÓN 2: Implementación del watch para la búsqueda ---
+watch(searchTerm, () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    // Cuando el usuario deja de escribir, reseteamos a la página 1 y cargamos
+    tableOptions.value.page = 1; 
+    loadItems(tableOptions.value);
+  }, 500); // Espera 500ms después de la última pulsación de tecla
+});
+
+
 onMounted(async () => {
   await fetchLocations();
-  // La tabla llamará a fetchClients por sí misma la primera vez
+  // La tabla llamará a loadItems por sí misma la primera vez
 });
 
 async function fetchLocations() {
@@ -143,15 +199,20 @@ async function fetchLocations() {
     }
 }
 
-// === LA FUNCIÓN fetchClients CORREGIDA ===
-async function fetchClients({ page, itemsPerPage, sortBy }) {
+async function loadItems(options) {
   loading.value = true;
+  tableOptions.value = options;
+
   try {
     const params = new URLSearchParams({
-      page: page,
-      per_page: itemsPerPage,
-      // Aquí podrías añadir lógica para el orden (sortBy) en el futuro si lo necesitas
+      page: options.page,
+      per_page: options.itemsPerPage,
     });
+
+    // --- CORRECCIÓN 3: La lógica para añadir el término de búsqueda ya estaba aquí, ahora será utilizada por el watch ---
+    if (searchTerm.value) {
+      params.append('search', searchTerm.value);
+    }
 
     const response = await $api(`/api/clients?${params.toString()}`);
     
@@ -163,6 +224,7 @@ async function fetchClients({ page, itemsPerPage, sortBy }) {
     loading.value = false;
   }
 }
+
 
 function openNewClientDialog() {
   editedItem.value = JSON.parse(JSON.stringify(defaultItem));
@@ -207,8 +269,7 @@ async function saveClient() {
       notificationStore.showNotification({ message: 'Cliente creado exitosamente.' });
     }
     closeDialogs();
-    // Forzamos a que la tabla se recargue pidiendo la primera página
-    fetchClients({ page: 1, itemsPerPage: itemsPerPage.value });
+    loadItems(tableOptions.value); // Recarga los datos con las opciones actuales
   } catch (error) {
     const message = error.data?.message || 'Ocurrió un error al guardar el cliente.';
     notificationStore.showNotification({ message, color: 'error' });
@@ -216,6 +277,7 @@ async function saveClient() {
     dialog.value.loading = false;
   }
 }
+
 
 async function confirmDelete() {
     deleteDialog.value.loading = true;
@@ -225,8 +287,12 @@ async function confirmDelete() {
         });
         notificationStore.showNotification({ message: 'Cliente eliminado.' });
         closeDialogs();
-        // Forzamos a que la tabla se recargue pidiendo la primera página
-        fetchClients({ page: 1, itemsPerPage: itemsPerPage.value });
+        
+        // --- CORRECCIÓN 4: Llamada correcta para recargar la tabla ---
+        // Usamos loadItems y le pasamos el estado actual de la tabla.
+        // Esto mantiene al usuario en su página actual si hay más items.
+        loadItems(tableOptions.value);
+
     } catch (error) {
         const message = error.data?.message || 'No se pudo eliminar el cliente.';
         notificationStore.showNotification({ message, color: 'error' });
