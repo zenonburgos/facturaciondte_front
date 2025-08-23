@@ -92,6 +92,16 @@
               <v-list-item-title>Gestión de Clientes</v-list-item-title>
             </v-list-item>
             
+            <v-list-item 
+              v-if="userHasRole(['Admin', 'Encargado de Negocio'])" 
+              link 
+              to="/gestion/empresa"
+            >
+              <template v-slot:prepend>
+                <v-icon>mdi-office-building-cog</v-icon>
+              </template>
+              <v-list-item-title>Datos de Mi Empresa</v-list-item-title>
+            </v-list-item>
           </v-list>
         </v-navigation-drawer>
 
