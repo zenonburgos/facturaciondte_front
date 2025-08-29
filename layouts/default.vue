@@ -111,9 +111,18 @@
           <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
           <v-toolbar-title>SmartDTE</v-toolbar-title>
           <v-spacer></v-spacer>
-          <v-btn icon title="Forzar Refresco de Token MH" @click="refreshToken" :loading="isRefreshing">
-              <v-icon>mdi-sync-alert</v-icon>
+          <v-btn 
+            v-if="userHasRole(['Super-Admin', 'Admin', 'Contador', 'Cliente'])"
+            href="https://api.sv-dte.com/admin" 
+            target="_blank" 
+            icon 
+            title="Panel Administrativo"
+          >
+            <v-icon>mdi-shield-crown</v-icon>
           </v-btn>
+          <!-- <v-btn icon title="Forzar Refresco de Token MH" @click="refreshToken" :loading="isRefreshing">
+              <v-icon>mdi-sync-alert</v-icon>
+          </v-btn> -->
           <span v-if="authStore.isAuthenticated" class="mr-2">
             Hola, {{ authStore.user?.name }}
           </span>
