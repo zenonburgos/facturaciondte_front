@@ -18,6 +18,7 @@ export default defineNuxtPlugin((nuxtApp) => {
     
     // La lógica mejorada ahora está aquí
     onResponseError({ request, response, error }) {
+      console.log('TRACE 1: onResponseError se ha disparado.');
         const authStore = useAuthStore();
         const notificationStore = useNotificationStore();
 
@@ -26,6 +27,7 @@ export default defineNuxtPlugin((nuxtApp) => {
         const isCriticalUserError = response && response.status === 500 && new URL(request).pathname === '/api/user';
 
         if (isAuthError || isCriticalUserError) {
+          console.log('TRACE 2: Es un error de autenticación. Llamando a authStore.logout().'); // <--- AÑADIR ESTO
             notificationStore.showNotification({ 
             message: 'Tu sesión ha expirado o es inválida. Por favor, inicia sesión de nuevo.', 
             color: 'error' 

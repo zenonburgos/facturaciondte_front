@@ -192,8 +192,11 @@ onMounted(() => {
 async function fetchUsers() {
   loading.value = true;
   try {
+    console.log('TRACE A: Intentando hacer fetch de usuarios...'); // <--- AÑADIR ESTO
     users.value = await $api('/api/users');
+    console.log('TRACE B: Fetch de usuarios exitoso.'); // <--- AÑADIR ESTO
   } catch (error) {
+    console.log('TRACE C: ¡ERROR! El catch del componente usuarios.vue se ha ejecutado.'); // <--- AÑADIR ESTO
     notificationStore.showNotification({ message: 'Error al cargar los usuarios.', color: 'error' });
   } finally {
     loading.value = false;
