@@ -109,7 +109,7 @@
 
         <v-app-bar app style="z-index: 1010;">
           <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
-          <v-toolbar-title>SmartDTE</v-toolbar-title>
+          <v-toolbar-title>SMART DTE</v-toolbar-title>
           <v-spacer></v-spacer>
           <v-btn 
             v-if="userHasRole(['Super-Admin', 'Admin', 'Contador', 'Cliente'])"
@@ -118,7 +118,7 @@
             icon 
             title="Panel Administrativo"
           >
-            <v-icon>mdi-shield-crown</v-icon>
+            <v-icon>mdi-view-dashboard</v-icon>
           </v-btn>
           <!-- <v-btn icon title="Forzar Refresco de Token MH" @click="refreshToken" :loading="isRefreshing">
               <v-icon>mdi-sync-alert</v-icon>
