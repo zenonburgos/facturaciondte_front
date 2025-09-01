@@ -260,8 +260,6 @@
             </v-row>
           </v-card>
 
-          <v-divider class="my-6"></v-divider>
-
           <!-- <v-row>
             <v-col>
               <v-checkbox
@@ -306,16 +304,69 @@
             <h3 class="mt-8">Ítems</h3>
             <v-divider class="mb-4"></v-divider>
             <v-row align="center">
-              <v-col cols="12" md="5"><v-text-field v-model="newItem.descripcion" label="Descripción" variant="outlined" density="compact"></v-text-field></v-col>
-              <v-col cols="6" md="3" lg="2">
-                <v-select v-model="newItem.tipoItem" :items="tiposDeItem" label="Tipo" variant="outlined" density="compact"></v-select>
+              <v-col cols="12" md="5">
+                <v-combobox
+                 v-if="authStore.user?.empresa?.usa_inventario"
+                  v-model="newItem.descripcion"
+                  label="Buscar Producto o escribir Descripción"
+                  :items="searchedProducts"
+                  item-title="descripcion"
+                  @update:search="searchProducts"
+                  :loading="isSearching"
+                  no-filter
+                  @update:model-value="productSelected"
+                  variant="outlined"
+                  density="compact"
+                  hide-details="auto" 
+                  >
+                  <template v-slot:prepend-inner>
+                    <v-chip
+                      v-if="newItem.codigo"
+                      class="mr-2"
+                      color="blue-grey"
+                      size="small"
+                      label
+                    >
+                      {{ newItem.codigo }}
+                    </v-chip>
+                  </template>
+
+                  <template v-slot:item="{ props, item }">
+                    <v-list-item 
+                      v-bind="props" 
+                      :title="item.raw.descripcion" 
+                      :subtitle="`Código: ${item.raw.codigo} | Precio: $${item.raw.precio_unitario}`"
+                    ></v-list-item>
+                  </template>
+                </v-combobox>
+                <v-text-field
+                  v-else
+                  v-model="newItem.descripcion"
+                  label="Descripción"
+                  variant="outlined"
+                  density="compact"
+                  hide-details="auto"
+                ></v-text-field>
               </v-col>
               <v-col cols="6" md="3" lg="2">
-                <v-select v-model="newItem.uniMedida" :items="unidadesDeMedida" item-title="title" item-value="value" label="U. Medida" variant="outlined" density="compact"></v-select>
+                <v-select v-model="newItem.tipoItem" :items="tiposDeItem" label="Tipo" variant="outlined" density="compact" hide-details="auto"></v-select>
               </v-col>
-              <v-col cols="12" md="2"><v-text-field v-model.number="newItem.cantidad" label="Cantidad" type="number" variant="outlined" density="compact"></v-text-field></v-col>
-              <v-col cols="12" md="3" lg="2"><v-text-field v-model.number="newItem.precio_unitario" :label="precioUnitarioLabel" type="number" prefix="$" variant="outlined" density="compact"></v-text-field></v-col>
-              <v-col cols="12" md="2"><v-btn color="primary" @click="addItem" prepend-icon="mdi-plus">Añadir</v-btn></v-col>
+              
+              <v-col cols="6" md="3" lg="2">
+                <v-select v-model="newItem.uniMedida" :items="unidadesDeMedida" item-title="title" item-value="value" label="U. Medida" variant="outlined" density="compact" hide-details="auto"></v-select>
+              </v-col>
+              
+              <v-col cols="12" md="2">
+                <v-text-field v-model.number="newItem.cantidad" label="Cantidad" type="number" variant="outlined" density="compact" hide-details="auto"></v-text-field>
+              </v-col>
+              
+              <v-col cols="12" md="3" lg="2">
+                <v-text-field v-model.number="newItem.precio_unitario" :label="precioUnitarioLabel" type="number" prefix="$" variant="outlined" density="compact" hide-details="auto"></v-text-field>
+              </v-col>
+              
+              <v-col cols="12" md="2">
+                <v-btn color="primary" @click="addItem" prepend-icon="mdi-plus" size="large">Añadir</v-btn>
+              </v-col>
             </v-row>
 
             <v-table v-if="form.items.length > 0" density="compact" class="mt-4 border">
@@ -425,9 +476,44 @@
       </v-card-text>
       <v-divider></v-divider>
       <v-card-actions class="pa-4">
-        <v-alert v-if="error" type="error" dense class="flex-grow-1 mr-4" :text="error"></v-alert>
-        <v-spacer v-else></v-spacer>
-        <v-btn color="success" size="large" @click="submitDTE" :disabled="!isFormValid" :loading="loading">Emitir Documento</v-btn>
+        <!-- <v-alert v-if="error" type="error" dense class="flex-grow-1 mr-4" :text="error"></v-alert>
+        <v-spacer v-else></v-spacer> -->
+        <div class="flex-grow-1 mr-4">
+          <v-expand-transition>
+            <div :key="validationErrors.length">
+
+              <v-alert
+                v-if="validationErrors.length > 0"
+                type="warning"
+                variant="tonal"
+                density="compact"
+              >
+                <div class="font-weight-bold mb-1">Recuerde completar los siguientes datos para poder emitir:</div>
+                <ul class="pl-4">
+                  <li v-for="(error, i) in validationErrors" :key="i">
+                    {{ error }}
+                  </li>
+                </ul>
+              </v-alert>
+
+              <v-alert
+                v-else
+                type="success"
+                variant="tonal"
+                density="compact"
+              >
+                <div class="d-flex align-center font-weight-bold">
+                  <v-icon start>mdi-check-circle-outline</v-icon>
+                  ¡Todo listo para emitir su documento!
+                </div>
+              </v-alert>
+
+            </div>
+          </v-expand-transition>
+        </div>
+        <v-spacer></v-spacer>
+        <v-btn color="success" size="large" @click="submitDTE" 
+        :disabled="validationErrors.length > 0 || loading" :loading="loading">Emitir Documento</v-btn>
       </v-card-actions>
     </v-card>
   </v-container>
@@ -438,6 +524,8 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '~/stores/auth';
 import { useNotificationStore } from '~/stores/notifications';
+
+
 
 const { $api } = useNuxtApp();
 const authStore = useAuthStore();
@@ -455,7 +543,10 @@ const searchLoading = ref(false);
 const searchResults = ref([]);
 const searchTerm = ref('');
 let searchTimeout = null;
+
 const puntosDeVentaPermitidos = ref([]);
+const searchedProducts = ref([]);
+const isSearching = ref(false);
 
 const searchTermDoc = ref('');
 const searchLoadingDoc = ref(false);
@@ -539,6 +630,7 @@ const newItem = ref({
   precio_unitario: 0,
   tipoItem: 1,
   uniMedida: 59,
+  codigo: null,
 });
 
 const dialog = ref({
@@ -734,52 +826,62 @@ const subtotales = computed(() => {
   }
 });
 
-const isFormValid = computed(() => {
-
-  if (!form.value.punto_de_venta_id) {
-    return false;
-  }
-  
-  let isClientValid = false;
+const validationErrors = computed(() => {
+  const errors = [];
   const cliente = form.value.cliente;
 
-  if (cliente) {
-    switch (form.value.tipo_dte) {
-      case '01': // Factura
-        isClientValid = !!cliente.nombre;
-        break;
-      
-      case '03': // Crédito Fiscal
-      case '05':
-      case '06':
-        isClientValid = !!cliente.nit && !!cliente.nrc && !!cliente.nombreComercial &&
-                        !!cliente.codActividad && !!cliente.descActividad && 
-                        !!cliente.direccion && !!cliente.telefono && !!cliente.correo;
-        break;
+  // 1. [TU REGLA] Verifica que se haya seleccionado un Punto de Venta
+  if (!form.value.punto_de_venta_id) {
+    errors.push('Debe seleccionar un punto de venta.');
+  }
 
-      case '04': // Nota de Remisión
-        isClientValid = !!cliente.tipoDocumento && !!cliente.numDocumento && 
-                        !!cliente.nombre && !!cliente.direccion;
+  // 2. [TU REGLA] Verifica que se haya seleccionado un Cliente
+  if (!cliente) {
+    errors.push('Debe seleccionar un cliente.');
+  } else {
+    // 3. [TU REGLA] Validaciones detalladas del cliente según el tipo de DTE
+    let isClientDataValid = true; // Asumimos que es válido hasta que se demuestre lo contrario
+    switch (form.value.tipo_dte) {
+      case '03': // Crédito Fiscal
+      case '05': // Nota de Crédito
+      case '06': // Nota de Débito
+        if (!cliente.nit || !cliente.nrc || !cliente.nombre || !cliente.codActividad || !cliente.descActividad || !cliente.direccion || !cliente.telefono || !cliente.correo) {
+          isClientDataValid = false;
+        }
         break;
-      
-      case '07': // Comprobante de Retención
-          // La validación del cliente es igual a la de un CCF
-          isClientValid = !!cliente.nit && !!cliente.nrc && !!cliente.nombre;
-          // Y debe tener al menos un documento retenido
-          return isClientValid && form.value.documentos_retenidos.length > 0 && !loading.value;
       case '14': // Factura de Sujeto Excluido
-        // Solo validamos que el cliente tenga nombre y número de documento
-        isClientValid = !!cliente.nombre && !!cliente.numDocumento;
+        if (!cliente.nombre || !cliente.numDocumento) {
+          isClientDataValid = false;
+        }
         break;
-      
-      default:
-        isClientValid = false;
-        
+      // Añade aquí más casos para otros DTEs si es necesario
+    }
+    if (!isClientDataValid) {
+      errors.push('Los datos del cliente seleccionado son insuficientes para este tipo de DTE.');
     }
   }
   
-  // El formulario es válido si el cliente es válido, hay ítems, y no estamos en medio de otra operación.
-  return isClientValid && form.value.items.length > 0 && !loading.value;
+  // 4. [TU REGLA] Verifica que haya ítems o documentos retenidos
+  if (form.value.tipo_dte === '07') {
+    if (form.value.documentos_retenidos.length === 0) {
+      errors.push('Debe agregar al menos un documento a retener.');
+    }
+  } else {
+    if (form.value.items.length === 0) {
+      errors.push('Debe agregar al menos un ítem al documento.');
+    }
+  }
+
+  // 5. [NUEVA REGLA] Si el inventario está activado, todos los ítems deben ser del catálogo
+  const empresaUsaInventario = authStore.user?.empresa?.usa_inventario;
+  if (empresaUsaInventario && form.value.items.length > 0) {
+    const hayItemsLibres = form.value.items.some(item => !item.codigo);
+    if (hayItemsLibres) {
+      errors.push('Cuando el inventario está activado, todos los ítems deben ser seleccionados del catálogo.');
+    }
+  }
+
+  return errors;
 });
 
 // --- MÉTODOS ---
@@ -834,10 +936,27 @@ async function saveNewClient() {
 }
 
 function addItem() {
-  console.log('Valores del ítem al momento de añadir:', newItem.value);
-  if (!newItem.value.descripcion || newItem.value.cantidad <= 0 || newItem.value.precio_unitario <= 0) return;
+  if (!newItem.value.descripcion || newItem.value.cantidad <= 0 || newItem.value.precio_unitario <= 0) {
+    
+    notificationStore.showNotification({
+      message: 'La descripción y el precio deben tener un valor mayor a cero.',
+      color: 'warning'
+    });
+    
+    return; // Detenemos la ejecución
+  }
+  
   form.value.items.push({ ...newItem.value });
-  newItem.value = { descripcion: '', cantidad: 1, precio_unitario: 0, tipoItem: 1, uniMedida: 59 };
+  
+  // 👇 CORREGIMOS EL RESETEO PARA QUE INCLUYA EL CÓDIGO 👇
+  newItem.value = { 
+    descripcion: '', 
+    cantidad: 1, 
+    precio_unitario: 0, 
+    tipoItem: 1, 
+    uniMedida: 59,
+    codigo: null // <-- Línea añadida
+  };
 }
 
 function removeItem(index) {
@@ -846,10 +965,10 @@ function removeItem(index) {
 
 async function submitDTE() {
   // Verificación inicial. Si el formulario no es válido, no hacemos nada.
-  if (!isFormValid.value) {
-    notificationStore.showNotification({ message: 'Formulario inválido. Revisa los datos del cliente y los ítems.', color: 'warning' });
-    return;
-  }
+  // if (!isFormValid.value) {
+  //   notificationStore.showNotification({ message: 'Formulario inválido. Revisa los datos del cliente y los ítems.', color: 'warning' });
+  //   return;
+  // }
   
   loading.value = true;
   error.value = null;
@@ -1045,5 +1164,51 @@ function retrySubmit() {
 function getUnidadMedidaNombre(value) {
     const unidad = unidadesDeMedida.value.find(u => u.value === value);
     return unidad ? unidad.title : 'Desconocido';
+}
+
+async function searchProducts(query) {
+  if (!query || query.length < 2) {
+    searchedProducts.value = [];
+    return;
+  }
+  
+  isSearching.value = true;
+
+  // Evita hacer una petición a la API en cada tecla que se presiona
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(async () => {
+    try {
+      searchedProducts.value = await $api(`/api/products/search?q=${query}`);
+    } catch (error) {
+      console.error("Error buscando productos:", error);
+      searchedProducts.value = [];
+    } finally {
+      isSearching.value = false;
+    }
+  }, 500); // Espera 500ms
+}
+
+function productSelected(value) {
+  // Caso 1: El usuario seleccionó un PRODUCTO de la lista (es un objeto)
+  if (typeof value === 'object' && value !== null) {
+    newItem.value.descripcion = value.descripcion;
+    newItem.value.precio_unitario = parseFloat(value.precio_unitario);
+    newItem.value.codigo = value.codigo;
+  } 
+  // Caso 2: El usuario está escribiendo TEXTO LIBRE (es un string)
+  else if (typeof value === 'string') {
+    newItem.value.descripcion = value;
+
+    // Si el texto no corresponde a un producto seleccionado, nos aseguramos
+    // de que no haya un código ni precio preestablecido del producto anterior.
+    newItem.value.codigo = null;
+    newItem.value.precio_unitario = 0;
+  }
+  // Caso 3: El usuario limpió el campo por completo
+  else {
+    newItem.value.descripcion = '';
+    newItem.value.codigo = null;
+    newItem.value.precio_unitario = 0;
+  }
 }
 </script>

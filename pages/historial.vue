@@ -165,7 +165,7 @@
       <v-divider></v-divider>
 
       <v-data-table-server
-        v-model:items-per-page="tableOptions.itemsPerPage"
+         v-model:items-per-page="tableOptions.itemsPerPage"
         :headers="headers"
         :items="serverItems"
         :items-length="totalItems"
@@ -202,6 +202,18 @@
               title="Copiar Código"
             ></v-btn>
           </div>
+        </template>
+
+        <template v-slot:item.subtotal="{ item }">
+          <span>${{ item.subtotal?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span>
+        </template>
+
+        <template v-slot:item.iva="{ item }">
+          <span>${{ item.iva?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span>
+        </template>
+
+        <template v-slot:item.total="{ item }">
+          <span class="font-weight-bold">${{ item.total?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span>
         </template>
         
         <template v-slot:item.estado="{ item }">
@@ -314,6 +326,9 @@ const headers = [
   { title: 'Número de Control', key: 'numero_control', sortable: false },
   { title: 'Código Generación', key: 'codigo_generacion', sortable: false },
   { title: 'Estado', key: 'estado' },
+  { title: 'Subtotal', key: 'subtotal', align: 'end', sortable: true },
+  { title: 'IVA', key: 'iva', align: 'end', sortable: true },
+  { title: 'Total', key: 'total', align: 'end', sortable: true },
   { title: 'Fecha Procesamiento', key: 'fh_procesamiento' },
   { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
 ];

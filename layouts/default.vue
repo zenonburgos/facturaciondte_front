@@ -113,8 +113,7 @@
           <v-spacer></v-spacer>
           <v-btn 
             v-if="userHasRole(['Super-Admin', 'Admin', 'Contador', 'Cliente'])"
-            href="https://api.sv-dte.com/admin" 
-            target="_blank" 
+            :href="adminUrl"  target="_blank" 
             icon 
             title="Panel Administrativo"
           >
@@ -153,6 +152,8 @@ import { ref } from 'vue';
 import { useAuthStore } from '~/stores/auth'; // Importamos nuestro store
 import { useNotificationStore } from '~/stores/notifications';
 
+const config = useRuntimeConfig();
+const adminUrl = config.public.adminUrl;
 const authStore = useAuthStore();
 const notificationStore = useNotificationStore();
 const drawer = ref(true);
