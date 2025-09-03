@@ -351,7 +351,6 @@ onMounted(async () => {
     filters.value.estado = route.query.estado;
   }
   
-  // ===== INICIO: LÓGICA AÑADIDA PARA EL MES =====
   if (route.query.month) {
     // 1. Extraemos el año y el mes del parámetro 'YYYY-MM'
     const [year, month] = route.query.month.split('-').map(Number);
@@ -374,7 +373,6 @@ onMounted(async () => {
     // router.replace({ query: { ...route.query, month: undefined } });
   }
   await loadItems();
-  // ===== FIN: LÓGICA AÑADIDA =====
 });
 
 function loadItemsWithOptions(newOptions) {

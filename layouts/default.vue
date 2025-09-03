@@ -41,11 +41,11 @@
         <v-navigation-drawer v-model="drawer" app class="custom-sidebar">
           <v-list>
             <v-list-item
-                class="px-4"
-                :title="companyHeaderText"
-                :subtitle="companyHeaderSubtitle"
-                :to="companyLink"
-                :link="!!companyLink"
+              class="px-4"
+              :title="companyHeaderText"
+              :subtitle="companyHeaderSubtitle"
+              :to="companyLink"
+              :link="!!companyLink"
             >
               <template v-slot:prepend>
                 <v-avatar color="primary">
@@ -57,31 +57,15 @@
 
           <v-divider></v-divider>
 
-          <v-list density="compact" nav>
-            <v-list-item
-              prepend-icon="mdi-view-dashboard"
-              title="Dashboard"
-              value="dashboard"
-              to="/"
-            ></v-list-item>
-            <v-list-item
-              prepend-icon="mdi-plus-box"
-              title="Emitir DTE"
-              value="emitir"
-              to="/emitir"
-            ></v-list-item>
-            <v-list-item
-              prepend-icon="mdi-history"
-              title="Historial"
-              value="historial"
-              to="/historial"
-            ></v-list-item>
-          </v-list>
+          <v-list nav>
+            <v-list-item prepend-icon="mdi-view-dashboard" title="Dashboard" value="dashboard" to="/"></v-list-item>
+            <v-list-item prepend-icon="mdi-plus-box" title="Emitir DTE" value="emitir" to="/emitir"></v-list-item>
+            <v-list-item prepend-icon="mdi-history" title="Historial" value="historial" to="/historial"></v-list-item>
 
-          <template v-if="userHasRole(['Admin', 'Encargado de Negocio', 'Cajero'])">
-            <v-divider></v-divider>
-            <v-list density="compact" nav>
+            <template v-if="userHasRole(['Admin', 'Encargado de Negocio', 'Cajero'])">
+              <v-divider class="my-2"></v-divider>
               <v-list-subheader>MANTENIMIENTO</v-list-subheader>
+              
               <v-list-item
                 v-if="userHasRole(['Admin', 'Encargado de Negocio'])"
                 prepend-icon="mdi-account-group"
@@ -96,17 +80,9 @@
                 value="clientes"
                 to="/gestion/clientes"
               ></v-list-item>
-              <!-- <v-list-item
-                v-if="userHasRole(['Admin', 'Encargado de Negocio'])"
-                prepend-icon="mdi-office-building-cog"
-                title="Datos de Mi Empresa"
-                value="empresa"
-                to="/gestion/empresa"
-              ></v-list-item> -->
-            </v-list>
-          </template>
+            </template>
+          </v-list>
         </v-navigation-drawer>
-
         <v-app-bar app style="z-index: 1010;">
           <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
 
