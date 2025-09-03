@@ -475,46 +475,55 @@
         </v-form>
       </v-card-text>
       <v-divider></v-divider>
-      <v-card-actions class="pa-4">
-        <!-- <v-alert v-if="error" type="error" dense class="flex-grow-1 mr-4" :text="error"></v-alert>
-        <v-spacer v-else></v-spacer> -->
-        <div class="flex-grow-1 mr-4">
-          <v-expand-transition>
-            <div :key="validationErrors.length">
+      <v-card-actions class="pa-4 d-flex flex-column flex-sm-row align-center">
+  <div class="flex-grow-1 w-100 order-sm-first order-first">
+    <v-expand-transition>
+      <div :key="validationErrors.length">
+        <v-alert
+          v-if="validationErrors.length > 0"
+          type="warning"
+          variant="tonal"
+          density="compact"
+          class="text-body-2 text-sm-body-1"
+        >
+          <div class="font-weight-bold mb-1">Recuerde completar los siguientes datos para poder emitir:</div>
+          <ul class="pl-4">
+            <li v-for="(error, i) in validationErrors" :key="i">
+              {{ error }}
+            </li>
+          </ul>
+        </v-alert>
 
-              <v-alert
-                v-if="validationErrors.length > 0"
-                type="warning"
-                variant="tonal"
-                density="compact"
-              >
-                <div class="font-weight-bold mb-1">Recuerde completar los siguientes datos para poder emitir:</div>
-                <ul class="pl-4">
-                  <li v-for="(error, i) in validationErrors" :key="i">
-                    {{ error }}
-                  </li>
-                </ul>
-              </v-alert>
+        <v-alert
+          v-else
+          type="success"
+          variant="tonal"
+          density="compact"
+          class="text-body-2 text-sm-body-1"
+        >
+          <div class="d-flex align-center font-weight-bold">
+            <v-icon start>mdi-check-circle-outline</v-icon>
+            ¡Todo listo para emitir su documento!
+          </div>
+        </v-alert>
+      </div>
+    </v-expand-transition>
+  </div>
 
-              <v-alert
-                v-else
-                type="success"
-                variant="tonal"
-                density="compact"
-              >
-                <div class="d-flex align-center font-weight-bold">
-                  <v-icon start>mdi-check-circle-outline</v-icon>
-                  ¡Todo listo para emitir su documento!
-                </div>
-              </v-alert>
-
-            </div>
-          </v-expand-transition>
-        </div>
-        <v-spacer></v-spacer>
-        <v-btn color="success" size="large" @click="submitDTE" 
-        :disabled="validationErrors.length > 0 || loading" :loading="loading">Emitir Documento</v-btn>
-      </v-card-actions>
+  <div class="w-100 w-sm-auto mt-4 mt-sm-0 d-flex justify-center order-sm-last order-last">
+    <v-btn 
+      color="success" 
+      size="large" 
+      @click="submitDTE" 
+      :disabled="validationErrors.length > 0 || loading" 
+      :loading="loading"
+      block
+      max-width="300" 
+    >
+      Emitir Documento
+    </v-btn>
+  </div>
+</v-card-actions>
     </v-card>
   </v-container>
 </template>
