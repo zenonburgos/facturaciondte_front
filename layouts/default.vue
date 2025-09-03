@@ -110,6 +110,18 @@
         <v-app-bar app style="z-index: 1010;">
           <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
           <v-toolbar-title>SMART DTE</v-toolbar-title>
+          <v-chip
+            v-if="activeCompanyName"
+            class="ml-4"
+            color="primary"
+            variant="tonal"
+            label
+            size="small"
+          >
+            <v-icon start icon="mdi-office-building-outline"></v-icon>
+            {{ activeCompanyName }}
+          </v-chip>
+          
           <v-spacer></v-spacer>
           <v-btn 
             v-if="userHasRole(['Super-Admin', 'Admin', 'Contador', 'Cliente'])"
@@ -148,7 +160,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useAuthStore } from '~/stores/auth'; // Importamos nuestro store
 import { useNotificationStore } from '~/stores/notifications';
 
@@ -158,6 +170,19 @@ const authStore = useAuthStore();
 const notificationStore = useNotificationStore();
 const drawer = ref(true);
 const isRefreshing = ref(false);
+
+const activeCompanyName = computed(() => {
+  // Si no hay usuario, no mostramos nada.
+  if (!authStore.user) return '';
+
+  // Si es super admin, mostramos un texto especial.
+  if (authStore.user.is_super_admin) {
+    return 'Vista de Super Administrador';
+  }
+
+  // Para usuarios normales, mostramos el nombre de su empresa.
+  return authStore.user.empresa?.nombre_comercial || authStore.user.empresa?.nombre || 'Empresa no asignada';
+});
 
 async function handleLogout() {
   await authStore.logout();
