@@ -316,6 +316,9 @@ const filters = ref({
   fecha_fin: getInitialDates().fin,
 });
 
+const showLoadingOverlay = ref(false);
+const loadingMessage = ref('');
+
 const documentTypes = ref([]);
 const exportLoading = ref(false);
 const invalidateDialog = ref({ show: false, dte: null, motivo: '', loading: false });
@@ -342,9 +345,36 @@ onMounted(async () => {
   } catch (error) {
     notificationStore.showNotification({ message: 'No se pudieron cargar los tipos de DTE.', color: 'error' });
   }
+  
+  // Mantenemos la lógica para el estado
   if (route.query.estado) {
     filters.value.estado = route.query.estado;
   }
+  
+  // ===== INICIO: LÓGICA AÑADIDA PARA EL MES =====
+  if (route.query.month) {
+    // 1. Extraemos el año y el mes del parámetro 'YYYY-MM'
+    const [year, month] = route.query.month.split('-').map(Number);
+    
+    // 2. Creamos las fechas de inicio y fin para ese mes
+    const firstDay = new Date(year, month - 1, 1);
+    const lastDay = new Date(year, month, 0); // El día 0 del siguiente mes es el último del actual
+    
+    // Función para formatear a 'YYYY-MM-DD'
+    const formatDate = (d) => d.toISOString().split('T')[0];
+    
+    // 3. Establecemos los filtros de fecha
+    filters.value.fecha_inicio = formatDate(firstDay);
+    filters.value.fecha_fin = formatDate(lastDay);
+
+    const monthName = firstDay.toLocaleDateString('es-SV', { month: 'long' });
+    loadingMessage.value = `Espera, estamos consultando el mes de ${monthName} del año ${year}...`;
+    showLoadingOverlay.value = true;
+    // Opcional: Limpiamos el query de la URL para que no quede "pegado"
+    // router.replace({ query: { ...route.query, month: undefined } });
+  }
+  await loadItems();
+  // ===== FIN: LÓGICA AÑADIDA =====
 });
 
 function loadItemsWithOptions(newOptions) {

@@ -47,7 +47,7 @@
     
     <v-row>
       <v-col cols="12" md="6">
-        <NuxtLink to="/historial" class="text-decoration-none">
+        <NuxtLink :to="{ path: '/historial', query: { month: selectedMonth } }" class="text-decoration-none">
         <v-card class="pa-2" elevation="2" hover>
           <div class="d-flex align-center">
             <v-avatar color="blue-lighten-4" size="62" class="mr-4">
@@ -66,7 +66,7 @@
       </v-col>
 
       <v-col cols="12" md="6">
-        <NuxtLink to="/historial" class="text-decoration-none">
+        <NuxtLink :to="{ path: '/historial', query: { month: selectedMonth } }" class="text-decoration-none">
         <v-card class="pa-2" elevation="2" hover>
           <div class="d-flex align-center">
             <v-avatar color="green-lighten-4" size="62" class="mr-4">
