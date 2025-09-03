@@ -109,10 +109,19 @@
 
         <v-app-bar app style="z-index: 1010;">
           <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
-          <v-toolbar-title>SMART DTE</v-toolbar-title>
+
+          <v-img
+            src="/images/logo.svg"
+            alt="SmartDTE Logo"
+            contain
+            max-height="40"
+            max-width="150"
+            class="mr-2"
+          ></v-img>
+
           <v-chip
             v-if="activeCompanyName"
-            class="ml-4"
+            class="d-none d-sm-flex" 
             color="primary"
             variant="tonal"
             label
@@ -123,23 +132,32 @@
           </v-chip>
           
           <v-spacer></v-spacer>
-          <v-btn 
-            v-if="userHasRole(['Super-Admin', 'Admin', 'Contador', 'Cliente'])"
-            :href="adminUrl"  target="_blank" 
-            icon 
-            title="Panel Administrativo"
-          >
-            <v-icon>mdi-view-dashboard</v-icon>
-          </v-btn>
-          <!-- <v-btn icon title="Forzar Refresco de Token MH" @click="refreshToken" :loading="isRefreshing">
-              <v-icon>mdi-sync-alert</v-icon>
-          </v-btn> -->
-          <span v-if="authStore.isAuthenticated" class="mr-2">
-            Hola, {{ authStore.user?.name }}
-          </span>
-          <v-btn v-if="authStore.isAuthenticated" icon @click="handleLogout">
-            <v-icon>mdi-logout</v-icon>
-          </v-btn>
+
+          <v-menu v-if="authStore.isAuthenticated" location="bottom">
+            <template v-slot:activator="{ props }">
+              <v-chip v-bind="props" link pill>
+                <v-avatar color="primary" size="small" class="mr-2">
+                  <span class="text-caption font-weight-bold">{{ userInitials }}</span>
+                </v-avatar>
+                <span class="d-none d-sm-inline">{{ authStore.user?.name }}</span>
+              </v-chip>
+            </template>
+
+            <v-list density="compact">
+              <v-list-item>
+                <v-list-item-title class="font-weight-bold">{{ authStore.user?.name }}</v-list-item-title>
+                <v-list-item-subtitle>{{ authStore.user?.email }}</v-list-item-subtitle>
+              </v-list-item>
+              <v-divider class="my-2"></v-divider>
+              <v-list-item @click="handleLogout" link>
+                <template v-slot:prepend>
+                  <v-icon>mdi-logout</v-icon>
+                </template>
+                <v-list-item-title>Cerrar Sesión</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+
         </v-app-bar>
 
         <v-main>
@@ -182,6 +200,12 @@ const activeCompanyName = computed(() => {
 
   // Para usuarios normales, mostramos el nombre de su empresa.
   return authStore.user.empresa?.nombre_comercial || authStore.user.empresa?.nombre || 'Empresa no asignada';
+});
+
+const userInitials = computed(() => {
+  const name = authStore.user?.name || '';
+  // Divide el nombre por los espacios y toma la primera letra de las primeras dos palabras
+  return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
 });
 
 async function handleLogout() {
