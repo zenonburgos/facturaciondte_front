@@ -37,75 +37,75 @@
           **MODO DE CONTINGENCIA ACTIVADO** - Los documentos se guardarán localmente para su envío posterior.
           <v-btn size="small" variant="text" class="ml-4">Sincronizar</v-btn>
         </v-alert>
-        <v-navigation-drawer v-model="drawer" app>
-          <v-list dense class="safe-area-top">
-            <v-list-item link to="/">
-              <template v-slot:prepend>
-                <v-icon>mdi-view-dashboard</v-icon>
-              </template>
-              <v-list-item-title>Dashboard</v-list-item-title>
-            </v-list-item>
-
-            <v-list-item link to="/emitir">
-              <template v-slot:prepend>
-                <v-icon>mdi-plus-box</v-icon>
-              </template>
-              <v-list-item-title>Emitir DTE</v-list-item-title>
-            </v-list-item>
-
-            <!-- <v-list-item link to="/liquidaciones">
-              <template v-slot:prepend>
-                <v-icon>mdi-scale-balance</v-icon> </template>
-              <v-list-item-title>Liquidaciones</v-list-item-title>
-            </v-list-item> -->
-
-            <v-list-item link to="/historial">
-              <template v-slot:prepend>
-                <v-icon>mdi-history</v-icon>
-              </template>
-              <v-list-item-title>Historial</v-list-item-title>
-            </v-list-item>
-          </v-list>
-
+        <!-- <v-navigation-drawer v-model="drawer" color="grey-lighten-4" app> -->
+        <v-navigation-drawer v-model="drawer" app class="custom-sidebar">
           <v-list>
-            <v-list-subheader v-if="userHasRole(['Admin', 'Encargado de Negocio', 'Cajero'])">MANTENIMIENTO</v-list-subheader>
-
-            <v-list-item 
-              v-if="userHasRole(['Admin', 'Encargado de Negocio'])" 
-              link 
-              to="/gestion/usuarios"
+            <v-list-item
+                class="px-4"
+                :title="companyHeaderText"
+                :subtitle="companyHeaderSubtitle"
+                :to="companyLink"
+                :link="!!companyLink"
             >
               <template v-slot:prepend>
-                <v-icon>mdi-account-group</v-icon>
+                <v-avatar color="primary">
+                  <span class="text-h6">{{ userInitials }}</span>
+                </v-avatar>
               </template>
-              <v-list-item-title>Gestión de Usuarios</v-list-item-title>
-            </v-list-item>
-
-            <v-list-item 
-              v-if="userHasRole(['Admin', 'Encargado de Negocio', 'Cajero'])" 
-              link 
-              to="/gestion/clientes"
-            >
-              <template v-slot:prepend>
-                <v-icon>mdi-account-supervisor-circle</v-icon>
-              </template>
-              <v-list-item-title>Gestión de Clientes</v-list-item-title>
-            </v-list-item>
-            
-            <v-list-item 
-              v-if="userHasRole(['Admin', 'Encargado de Negocio'])" 
-              link 
-              to="/gestion/empresa"
-            >
-              <template v-slot:prepend>
-                <v-icon>mdi-office-building-cog</v-icon>
-              </template>
-              <v-list-item-title>Datos de Mi Empresa</v-list-item-title>
             </v-list-item>
           </v-list>
-        </v-navigation-drawer>
 
-        
+          <v-divider></v-divider>
+
+          <v-list density="compact" nav>
+            <v-list-item
+              prepend-icon="mdi-view-dashboard"
+              title="Dashboard"
+              value="dashboard"
+              to="/"
+            ></v-list-item>
+            <v-list-item
+              prepend-icon="mdi-plus-box"
+              title="Emitir DTE"
+              value="emitir"
+              to="/emitir"
+            ></v-list-item>
+            <v-list-item
+              prepend-icon="mdi-history"
+              title="Historial"
+              value="historial"
+              to="/historial"
+            ></v-list-item>
+          </v-list>
+
+          <template v-if="userHasRole(['Admin', 'Encargado de Negocio', 'Cajero'])">
+            <v-divider></v-divider>
+            <v-list density="compact" nav>
+              <v-list-subheader>MANTENIMIENTO</v-list-subheader>
+              <v-list-item
+                v-if="userHasRole(['Admin', 'Encargado de Negocio'])"
+                prepend-icon="mdi-account-group"
+                title="Gestión de Usuarios"
+                value="usuarios"
+                to="/gestion/usuarios"
+              ></v-list-item>
+              <v-list-item
+                v-if="userHasRole(['Admin', 'Encargado de Negocio', 'Cajero'])"
+                prepend-icon="mdi-account-supervisor-circle"
+                title="Gestión de Clientes"
+                value="clientes"
+                to="/gestion/clientes"
+              ></v-list-item>
+              <!-- <v-list-item
+                v-if="userHasRole(['Admin', 'Encargado de Negocio'])"
+                prepend-icon="mdi-office-building-cog"
+                title="Datos de Mi Empresa"
+                value="empresa"
+                to="/gestion/empresa"
+              ></v-list-item> -->
+            </v-list>
+          </template>
+        </v-navigation-drawer>
 
         <v-app-bar app style="z-index: 1010;">
           <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
@@ -117,7 +117,9 @@
             max-height="40"
             max-width="150"
             class="mr-2"
-          ></v-img>
+            @click="goToDashboard"
+            style="cursor: pointer;"
+        ></v-img>
 
           <v-chip
             v-if="activeCompanyName"
@@ -135,18 +137,30 @@
 
           <v-menu v-if="authStore.isAuthenticated" location="bottom">
             <template v-slot:activator="{ props }">
-              <v-chip v-bind="props" link pill>
-                <v-avatar color="primary" size="small" class="mr-2">
-                  <span class="text-caption font-weight-bold">{{ userInitials }}</span>
-                </v-avatar>
-                <span class="d-none d-sm-inline">{{ authStore.user?.name }}</span>
-              </v-chip>
+                <v-btn v-bind="props" rounded="pill" variant="tonal" class="text-none pa-1" style="height: auto;">
+                    <v-avatar color="primary" size="default">
+                        <span class="text-subtitle-2 font-weight-bold">{{ userInitials }}</span>
+                    </v-avatar>
+                    <span class="d-none d-sm-inline ml-2 mr-1">{{ authStore.user?.name }}</span>
+                </v-btn>
             </template>
 
             <v-list density="compact">
               <v-list-item>
                 <v-list-item-title class="font-weight-bold">{{ authStore.user?.name }}</v-list-item-title>
                 <v-list-item-subtitle>{{ authStore.user?.email }}</v-list-item-subtitle>
+              </v-list-item>
+              <v-divider class="my-2"></v-divider>
+              <v-list-item 
+                  v-if="userHasRole(['Admin'])" 
+                  :href="adminUrl" 
+                  target="_blank" 
+                  link
+              >
+                  <template v-slot:prepend>
+                      <v-icon>mdi-cog</v-icon>
+                  </template>
+                  <v-list-item-title>Panel de Administración</v-list-item-title>
               </v-list-item>
               <v-divider class="my-2"></v-divider>
               <v-list-item @click="handleLogout" link>
@@ -181,6 +195,7 @@
 import { ref, computed } from 'vue';
 import { useAuthStore } from '~/stores/auth'; // Importamos nuestro store
 import { useNotificationStore } from '~/stores/notifications';
+import { useRouter } from 'vue-router'; 
 
 const config = useRuntimeConfig();
 const adminUrl = config.public.adminUrl;
@@ -189,23 +204,32 @@ const notificationStore = useNotificationStore();
 const drawer = ref(true);
 const isRefreshing = ref(false);
 
-const activeCompanyName = computed(() => {
-  // Si no hay usuario, no mostramos nada.
+const router = useRouter();
+const goToDashboard = () => router.push('/');
+
+const companyHeaderText = computed(() => {
   if (!authStore.user) return '';
+  if (authStore.user.is_super_admin) return 'Super Administrador';
+  return authStore.user.empresa?.nombre_comercial || authStore.user.empresa?.nombre || 'Empresa';
+});
 
-  // Si es super admin, mostramos un texto especial.
-  if (authStore.user.is_super_admin) {
-    return 'Vista de Super Administrador';
-  }
-
-  // Para usuarios normales, mostramos el nombre de su empresa.
-  return authStore.user.empresa?.nombre_comercial || authStore.user.empresa?.nombre || 'Empresa no asignada';
+const companyHeaderSubtitle = computed(() => {
+  if (!authStore.user) return '';
+  if (authStore.user.is_super_admin) return 'Control Total del Sistema';
+  return `NIT: ${authStore.user.empresa?.nit || 'No especificado'}`;
 });
 
 const userInitials = computed(() => {
   const name = authStore.user?.name || '';
   // Divide el nombre por los espacios y toma la primera letra de las primeras dos palabras
   return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+});
+
+const companyLink = computed(() => {
+  if (userHasRole(['Admin', 'Encargado de Negocio', 'Contador'])) {
+    return '/gestion/empresa';
+  }
+  return null; // No será un enlace para otros roles
 });
 
 async function handleLogout() {
@@ -242,5 +266,52 @@ function userHasRole(roles) {
   .safe-area-top {
     padding-top: 64px;
   }
+}
+
+/* --- ESTILOS PARA EL MENÚ LATERAL PERSONALIZADO (VERSIÓN CORREGIDA) --- */
+
+/* 1. Color de fondo del menú */
+.custom-sidebar .v-navigation-drawer__content {
+  background-color: #F0F4F9 !important;
+}
+.custom-sidebar .v-list {
+  background-color: transparent !important;
+}
+
+/* 2. Estilo y tamaño de la fuente para TODAS las opciones */
+/* Usamos un selector más específico para asegurar que se aplique */
+.custom-sidebar .v-list-item .v-list-item-title {
+  font-family: 'Roboto', 'Arial', sans-serif !important;
+  font-size: 0.95rem !important; /* Aumentamos el tamaño */
+  font-weight: 500 !important;   /* Le damos un grosor medio */
+}
+
+/* 3. Estilos para la opción seleccionada (activa) */
+.custom-sidebar .v-list-item--active {
+  background-color: #D3E3FD !important;
+  border-top-right-radius: 25px;
+  border-bottom-right-radius: 25px;
+}
+/* CORRECCIÓN CLAVE: Aplicamos el color al título dentro de un item activo */
+.custom-sidebar .v-list-item--active .v-list-item-title {
+  color: #2C5EB0 !important;
+}
+.custom-sidebar .v-list-item--active .v-icon {
+  color: #2C5EB0 !important;
+}
+
+/* 4. Estilos para cuando el mouse pasa por encima (hover) */
+/* Usamos :hover en el v-list-item para detectar el evento */
+.custom-sidebar .v-list-item:hover {
+  background-color: #D3E3FD !important;
+  border-top-right-radius: 25px;
+  border-bottom-right-radius: 25px;
+}
+/* CORRECCIÓN CLAVE: Aplicamos el color al título cuando el mouse está encima del item */
+.custom-sidebar .v-list-item:hover .v-list-item-title {
+  color: #2C5EB0 !important;
+}
+.custom-sidebar .v-list-item:hover .v-icon {
+  color: #2C5EB0 !important;
 }
 </style>
