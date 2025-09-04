@@ -1,7 +1,49 @@
 <template>
   <v-container>
     <h1 class="mb-4">Historial de Documentos Emitidos</h1>
-    
+    <v-row class="mb-4">
+      <v-col cols="12" sm="6" md="4">
+        <v-card variant="tonal" color="blue-grey">
+          <v-card-text>
+            <div class="d-flex align-center">
+              <v-icon size="large" class="mr-3">mdi-poll</v-icon>
+              <div>
+                <div class="text-caption text-medium-emphasis">Subtotal de la Búsqueda</div>
+                <div class="text-h5 font-weight-bold">{{ formatCurrency(totals.subtotal) }}</div>
+              </div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <v-col cols="12" sm="6" md="4">
+        <v-card variant="tonal" color="teal">
+          <v-card-text>
+            <div class="d-flex align-center">
+              <v-icon size="large" class="mr-3">mdi-percent-box-outline</v-icon>
+              <div>
+                <div class="text-caption text-medium-emphasis">IVA de la Búsqueda</div>
+                <div class="text-h5 font-weight-bold">{{ formatCurrency(totals.iva) }}</div>
+              </div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      
+      <v-col cols="12" sm="12" md="4">
+        <v-card variant="tonal" color="primary">
+          <v-card-text>
+            <div class="d-flex align-center">
+              <v-icon size="large" class="mr-3">mdi-calculator</v-icon>
+              <div>
+                <div class="text-caption text-medium-emphasis">Total de la Búsqueda</div>
+                <div class="text-h5 font-weight-bold">{{ formatCurrency(totals.total) }}</div>
+              </div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
     <v-dialog v-model="invalidateDialog.show" persistent max-width="600px">
       <v-card>
         <v-card-title>
@@ -182,7 +224,7 @@
         <template v-slot:item.tipo_dte="{ item }">
           <v-chip small :color="getDteColor(item.tipo_dte)" density="compact" size="small">{{ getDteName(item.tipo_dte) }}</v-chip>
         </template>
-
+        
         <template v-slot:item.codigo_generacion="{ item }">
           <div class="d-flex align-center">
             <v-tooltip location="top">
@@ -316,6 +358,12 @@ const filters = ref({
   fecha_fin: getInitialDates().fin,
 });
 
+const totals = ref({
+  subtotal: 0,
+  iva: 0,
+  total: 0,
+});
+
 const showLoadingOverlay = ref(false);
 const loadingMessage = ref('');
 
@@ -398,12 +446,29 @@ async function loadItems() {
     if (response && Array.isArray(response.data)) {
       serverItems.value = response.data.map(item => ({ ...item, pdfLoading: false, jsonLoading: false, whatsAppLoading: false }));
       totalItems.value = response.total;
+
+      if (response.totals) {
+        totals.value = response.totals;
+      }
     }
   } catch (error) {
     notificationStore.showNotification({ message: error.data?.message || 'No se pudo cargar el historial.', color: 'error' });
   } finally {
     loading.value = false;
   }
+}
+
+function formatCurrency(value) {
+  // Convierte el valor a un número de punto flotante.
+  const numberValue = parseFloat(value);
+
+  // Si el resultado no es un número válido (ej. null, undefined), devuelve $0.00.
+  if (isNaN(numberValue)) {
+    return '$0.00';
+  }
+
+  // Si es un número válido, le da el formato de moneda.
+  return `$${numberValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 // --- LÓGICA DE FILTROS Y VALIDACIÓN ---
