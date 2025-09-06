@@ -854,19 +854,22 @@ const validationErrors = computed(() => {
       case '03': // Crédito Fiscal
       case '05': // Nota de Crédito
       case '06': // Nota de Débito
-        if (!cliente.nit || !cliente.nrc || !cliente.nombre || !cliente.codActividad || !cliente.descActividad || !cliente.direccion || !cliente.telefono || !cliente.correo) {
-          isClientDataValid = false;
-        }
+        // En lugar de una sola validación, hacemos una por cada campo requerido.
+        // Esto le dará al usuario una lista clara de lo que falta.
+        if (!cliente.nit) errors.push('El cliente debe tener un NIT para este documento.');
+        if (!cliente.nrc) errors.push('El cliente debe tener un NRC para este documento.');
+        if (!cliente.nombre) errors.push('El cliente debe tener un Nombre o Razón Social.');
+        if (!cliente.cod_actividad) errors.push('El cliente debe tener un Código de Actividad.');
+        if (!cliente.desc_actividad) errors.push('El cliente debe tener una Descripción de Actividad.');
+        if (!cliente.telefono) errors.push('El cliente debe tener un Teléfono.');
+        if (!cliente.correo) errors.push('El cliente debe tener un Correo Electrónico.');
+        if (!cliente.direccion?.complemento) errors.push('El cliente debe tener una Dirección.');
         break;
+        
       case '14': // Factura de Sujeto Excluido
-        if (!cliente.nombre || !cliente.numDocumento) {
-          isClientDataValid = false;
-        }
+        if (!cliente.nombre) errors.push('El cliente debe tener un Nombre.');
+        if (!cliente.numDocumento) errors.push('El cliente debe tener un Número de Documento.');
         break;
-      // Añade aquí más casos para otros DTEs si es necesario
-    }
-    if (!isClientDataValid) {
-      errors.push('Los datos del cliente seleccionado son insuficientes para este tipo de DTE.');
     }
   }
   

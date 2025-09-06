@@ -12,7 +12,7 @@
                 </h1>
                 
                 <p class="text-body-1 font-weight-light text-white op-80 mb-8">
-                  Únete a SV-DTE y toma el control de tus documentos tributarios de forma fácil, rápida y segura.
+                  {{ $config.public.loginMessage }}
                 </p>
 
                 <v-list bg-color="transparent" class="text-left">
@@ -156,5 +156,13 @@ async function handleLogin() {
 <style scoped>
 .op-80 {
   opacity: 0.8;
+}
+.text-body-1 {
+  /* Estas dos propiedades son las mágicas */
+  overflow-wrap: break-word;
+  word-wrap: break-word; /* Para compatibilidad con navegadores antiguos */
+  
+  /* Adicionalmente, asegúrate de que el párrafo no tenga un alto fijo */
+  height: auto; 
 }
 </style>
