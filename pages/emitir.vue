@@ -1125,6 +1125,8 @@ async function handleDocumentoSeleccionado(selectedDoc) {
       cantidad: item.cantidad,
       precio_unitario: item.precioUni,
       codigo: item.codigo, // Incluimos el código si existe
+      tipoItem: item.tipoItem,
+      uniMedida: item.uniMedida,
     }));
 
     notificationStore.showNotification({ message: 'Cliente e ítems cargados desde el CCFE original.', color: 'info' });
