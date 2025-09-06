@@ -851,21 +851,27 @@ const validationErrors = computed(() => {
     // 3. [TU REGLA] Validaciones detalladas del cliente según el tipo de DTE
     let isClientDataValid = true; // Asumimos que es válido hasta que se demuestre lo contrario
     switch (form.value.tipo_dte) {
-      case '03': // Crédito Fiscal
-      case '05': // Nota de Crédito
-      case '06': // Nota de Débito
-        // En lugar de una sola validación, hacemos una por cada campo requerido.
-        // Esto le dará al usuario una lista clara de lo que falta.
-        if (!cliente.nit) errors.push('El cliente debe tener un NIT para este documento.');
-        if (!cliente.nrc) errors.push('El cliente debe tener un NRC para este documento.');
+      case '03': // Comprobante de Crédito Fiscal (Mantiene validación estricta)
+        if (!cliente.nit) errors.push('El cliente debe tener un NIT.');
+        if (!cliente.nrc) errors.push('El cliente debe tener un NRC.');
         if (!cliente.nombre) errors.push('El cliente debe tener un Nombre o Razón Social.');
         if (!cliente.cod_actividad) errors.push('El cliente debe tener un Código de Actividad.');
         if (!cliente.desc_actividad) errors.push('El cliente debe tener una Descripción de Actividad.');
+        if (!cliente.nombre_comercial) errors.push('El cliente debe tener un Nombre Comercial.');
+        if (!cliente.direccion?.complemento) errors.push('El cliente debe tener una Dirección.');
         if (!cliente.telefono) errors.push('El cliente debe tener un Teléfono.');
         if (!cliente.correo) errors.push('El cliente debe tener un Correo Electrónico.');
-        if (!cliente.direccion?.complemento) errors.push('El cliente debe tener una Dirección.');
         break;
-        
+
+      case '05': // Nota de Crédito
+      case '06': // Nota de Débito (Validación más flexible)
+        // Mantenemos los requisitos básicos
+        if (!cliente.nit) errors.push('El cliente debe tener un NIT.');
+        if (!cliente.nrc) errors.push('El cliente debe tener un NRC.');
+        if (!cliente.nombre) errors.push('El cliente debe tener un Nombre o Razón Social.');
+        // Los campos de actividad ya no son requeridos aquí
+        break;
+
       case '14': // Factura de Sujeto Excluido
         if (!cliente.nombre) errors.push('El cliente debe tener un Nombre.');
         if (!cliente.numDocumento) errors.push('El cliente debe tener un Número de Documento.');
