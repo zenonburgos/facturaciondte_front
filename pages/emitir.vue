@@ -997,6 +997,17 @@ async function submitDTE() {
     // El payload ahora es una copia directa y limpia del estado del formulario.
     const payload = { ...form.value };
 
+    if (payload.cliente) {
+      const clienteSnakeCase = {};
+      for (const key in payload.cliente) {
+        // Convierte una llave como "nombreComercial" a "nombre_comercial"
+        const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+        clienteSnakeCase[snakeKey] = payload.cliente[key];
+      }
+      // Reemplazamos el objeto original por el transformado
+      payload.cliente = clienteSnakeCase;
+    }
+
     if (['05', '06'].includes(payload.tipo_dte) && form.value.documento_relacionado) {
         const docRel = form.value.documento_relacionado;
         payload.documento_relacionado = {
