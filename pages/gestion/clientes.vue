@@ -254,22 +254,38 @@ async function saveClient() {
   if (!valid) return;
 
   dialog.value.loading = true;
+
+  // --- INICIO DE LA CORRECCIÓN ---
+  // Creamos un objeto 'payload' para enviar al backend.
+  // Copiamos todos los datos del cliente que estamos editando.
+  const payload = { ...editedItem.value };
+
+  // Tomamos los valores del objeto anidado 'direccion'
+  // y los ponemos en el nivel principal del payload.
+  payload.departamento = editedItem.value.direccion.departamento;
+  payload.municipio = editedItem.value.direccion.municipio;
+  payload.complemento = editedItem.value.direccion.complemento;
+
+  // Eliminamos el objeto 'direccion' anidado para no enviar datos duplicados.
+  delete payload.direccion;
+  // --- FIN DE LA CORRECCIÓN ---
+  
   try {
     if (editedItem.value.id) {
       await $api(`/api/clients/${editedItem.value.id}`, {
         method: 'PUT',
-        body: editedItem.value,
+        body: payload, // <-- Enviamos el payload corregido
       });
       notificationStore.showNotification({ message: 'Cliente actualizado exitosamente.' });
     } else {
       await $api('/api/clients', {
         method: 'POST',
-        body: editedItem.value,
+        body: payload, // <-- Enviamos el payload corregido
       });
       notificationStore.showNotification({ message: 'Cliente creado exitosamente.' });
     }
     closeDialogs();
-    loadItems(tableOptions.value); // Recarga los datos con las opciones actuales
+    loadItems(tableOptions.value);
   } catch (error) {
     const message = error.data?.message || 'Ocurrió un error al guardar el cliente.';
     notificationStore.showNotification({ message, color: 'error' });
