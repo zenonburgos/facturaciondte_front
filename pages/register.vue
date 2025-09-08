@@ -236,17 +236,20 @@ const departments = computed(() => {
 });
 
 const municipalities = computed(() => {
-  // El v-model de departamento ahora guardará el CÓDIGO, así que buscamos por código.
   if (!form.value.empresa_direccion.departamento) return [];
 
   const selectedDep = locations.value.find(dep => dep.codigo === form.value.empresa_direccion.departamento);
-
   if (!selectedDep) return [];
 
-  // También creamos un objeto con 'title' (nombre) y 'value' (código)
   return selectedDep.municipios.map(mun => ({
     title: mun.nombre,
-    value: mun.codigo, // <-- Usamos el CÓDIGO como valor
+    // --- INICIO DE LA CORRECCIÓN ---
+    // ANTES (Enviaba el código completo de 4 dígitos):
+    // value: mun.codigo,
+
+    // AHORA (Envía solo los 2 últimos dígitos):
+    value: mun.codigo.substr(-2)
+    // --- FIN DE LA CORRECCIÓN ---
   }));
 });
 
