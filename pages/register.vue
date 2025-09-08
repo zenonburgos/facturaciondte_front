@@ -13,6 +13,16 @@
           
           <p class="text-h6 mb-4 mt-6">1. Datos de la Empresa</p>
           <v-row>
+            <v-col cols="12">
+                <v-file-input
+                    v-model="form.logo_file"
+                    label="Logotipo de la Empresa (Opcional)"
+                    accept="image/*"
+                    prepend-icon="mdi-camera"
+                    variant="outlined"
+                    density="compact"
+                ></v-file-input>
+            </v-col>
             <v-col cols="12" md="6">
               <v-text-field v-model="form.empresa_nombre" label="Nombre o Razón Social" :rules="[rules.required]" variant="outlined" density="compact"></v-text-field>
             </v-col>
@@ -20,13 +30,29 @@
               <v-text-field v-model="form.empresa_nombre_comercial" label="Nombre Comercial (Opcional)" variant="outlined" density="compact"></v-text-field>
             </v-col>
             <v-col cols="12" md="6">
-              <v-text-field v-model="form.empresa_nit" label="NIT" :rules="[rules.required]" variant="outlined" density="compact"></v-text-field>
+              <v-text-field 
+                v-model="form.empresa_nit" 
+                label="NIT" 
+                :rules="[rules.required, rules.nit]" 
+                variant="outlined" 
+                density="compact"
+                hint="Escribe los 14 dígitos sin guiones."
+                persistent-hint
+              ></v-text-field>
             </v-col>
             <v-col cols="12" md="6">
-              <v-text-field v-model="form.empresa_nrc" label="NRC" :rules="[rules.required]" variant="outlined" density="compact"></v-text-field>
+              <v-text-field v-model="form.empresa_nrc" label="NRC" :rules="[rules.required, rules.nrc]" variant="outlined" density="compact"></v-text-field>
             </v-col>
             <v-col cols="12" md="6">
-              <v-text-field v-model="form.empresa_telefono" label="Teléfono de Contacto" :rules="[rules.required]" variant="outlined" density="compact"></v-text-field>
+              <v-text-field 
+                  v-model="form.empresa_telefono" 
+                  label="Teléfono de Contacto" 
+                  :rules="[rules.required, rules.phone]" 
+                  variant="outlined" 
+                  density="compact"
+                  hint="Número de 8 dígitos (Ej: 78787878)."
+                  persistent-hint
+              ></v-text-field>
             </v-col>
             <v-col cols="12" md="6">
               <v-text-field v-model="form.empresa_correo" label="Correo Electrónico de la Empresa" :rules="[rules.required, rules.email]" type="email" variant="outlined" density="compact"></v-text-field>
@@ -96,7 +122,14 @@
               <v-text-field v-model="form.user_email" label="Tu Correo (para el inicio de sesión)" :rules="[rules.required, rules.email]" type="email" variant="outlined" density="compact"></v-text-field>
             </v-col>
             <v-col cols="12" md="6">
-              <v-text-field v-model="form.user_password" label="Contraseña" :rules="[rules.required, rules.password]" type="password" variant="outlined" density="compact" hint="Mínimo 8 caracteres, una mayúscula y un número."></v-text-field>
+              <v-text-field 
+                  v-model="form.user_password" 
+                  label="Contraseña" 
+                  :rules="[rules.required, rules.password]" 
+                  type="password" 
+                  variant="outlined" 
+                  density="compact" 
+                  hint="Mínimo 8 caracteres, una mayúscula, una minúscula y un número."  ></v-text-field>
             </v-col>
             <v-col cols="12" md="6">
               <v-text-field v-model="form.user_password_confirmation" label="Confirmar Contraseña" :rules="[rules.required, rules.passwordConfirmation]" type="password" variant="outlined" density="compact"></v-text-field>
@@ -116,12 +149,21 @@
           </v-row>
 
           <v-alert v-if="error" type="error" dense class="my-4" variant="tonal">
-            <p class="font-weight-bold">{{ error.message }}</p>
-            <ul v-if="error.errors" class="mt-2">
-              <li v-for="(messages, field) in error.errors" :key="field">
-                {{ messages[0] }}
-              </li>
-            </ul>
+            <template v-slot:title>
+              <span class="font-weight-bold">Error en el Registro</span>
+            </template>
+            
+            <div v-if="error.errors">
+                Por favor, corrige los siguientes errores:
+                <ul class="mt-2" style="padding-left: 20px;">
+                  <li v-for="(messages, field) in error.errors" :key="field">
+                    <strong>{{ field }}:</strong> {{ messages[0] }}
+                  </li>
+                </ul>
+            </div>
+            <div v-else>
+                {{ error.message }}
+            </div>
           </v-alert>
 
           <v-card-actions class="pa-0 pt-6">
@@ -161,6 +203,7 @@ const form = ref({
   empresa_direccion: { departamento: null, municipio: null, complemento: '' },
   mh_password_api: '',
   mh_password_certificado: '',
+  logo_file: null,
   user_name: '',
   user_username: '',
   user_email: '',
@@ -209,8 +252,6 @@ const municipalities = computed(() => {
 
 // WATCH: Observa si el usuario cambia el departamento
 watch(() => form.value.empresa_direccion.departamento, (newDepartment, oldDepartment) => {
-  // Si el departamento cambia, reseteamos el municipio seleccionado
-  // para evitar que se quede un municipio de un departamento anterior.
   if (newDepartment !== oldDepartment) {
     form.value.empresa_direccion.municipio = null;
   }
@@ -221,9 +262,27 @@ watch(() => form.value.empresa_direccion.departamento, (newDepartment, oldDepart
 const rules = {
   required: value => !!value || 'Este campo es requerido.',
   email: value => /.+@.+\..+/.test(value) || 'Debe ser un correo electrónico válido.',
-  password: value => (value && value.length >= 8) || 'La contraseña debe tener al menos 8 caracteres.',
+  
+  // NUEVA: Regla de contraseña más estricta
+   password: value => {
+    if (!value || value.length < 8) return 'La contraseña debe tener al menos 8 caracteres.';
+    if (!/[A-Z]/.test(value)) return 'Debe contener al menos una mayúscula.';
+    if (!/[a-z]/.test(value)) return 'Debe contener al menos una minúscula.'; // <-- REGLA AÑADIDA
+    if (!/[0-9]/.test(value)) return 'Debe contener al menos un número.';
+    return true;
+  },
+  
   passwordConfirmation: value => value === form.value.user_password || 'Las contraseñas no coinciden.',
   username: value => /^[a-zA-Z0-9_-]+$/.test(value) || 'Formato no válido. Solo letras, números, guiones y guiones bajos.',
+  
+  // NUEVA: Regla para NIT (14 dígitos)
+  nit: value => /^[0-9]{14}$/.test(value) || 'El NIT debe consistir en 14 dígitos numéricos.',
+
+  // NUEVA: Regla para NRC
+  nrc: value => /^[0-9]+(-[0-9])?$/.test(value) || 'El NRC tiene un formato inválido.',
+  
+  // NUEVA: Regla para Teléfono de El Salvador
+  phone: value => /^[67][0-9]{7}$/.test(value) || 'Debe ser un teléfono válido de 8 dígitos (iniciar con 6 o 7).',
 };
 
 async function handleRegister() {
@@ -235,11 +294,32 @@ async function handleRegister() {
   }
   
   loading.value = true;
+
+  // Usa FormData para enviar archivos y texto juntos
+  const formData = new FormData();
+
+  // Añadir todos los campos de texto al FormData
+  Object.keys(form.value).forEach(key => {
+    if (key !== 'logo_file' && key !== 'empresa_direccion') {
+        formData.append(key, form.value[key] || '');
+    }
+  });
+
+  // Añade los campos de dirección anidados correctamente
+  formData.append('empresa_direccion[departamento]', form.value.empresa_direccion.departamento || '');
+  formData.append('empresa_direccion[municipio]', form.value.empresa_direccion.municipio || '');
+  formData.append('empresa_direccion[complemento]', form.value.empresa_direccion.complemento || '');
+
+  // Añadir el archivo del logo si fue seleccionado
+  if (form.value.logo_file && form.value.logo_file.length > 0) {
+    formData.append('logo_file', form.value.logo_file[0]);
+  }
+
   try {
     const { $api } = useNuxtApp();
-    const response = await $api('/api/register', {
+    await $api('/api/register', {
       method: 'POST',
-      body: form.value,
+      body: formData,
     });
     
     // Al registrarse con éxito, lo enviamos a una página que le diga que revise su correo

@@ -48,8 +48,15 @@
               :link="!!companyLink"
             >
               <template v-slot:prepend>
-                <v-avatar color="primary">
-                  <span class="text-h6">{{ userInitials }}</span>
+                <v-avatar color="white">
+                  <v-img
+                    v-if="companyLogoUrl"
+                    :src="companyLogoUrl"
+                    :alt="companyHeaderText"
+                    cover
+                  ></v-img>
+
+                  <span v-else class="text-h6 text-primary">{{ userInitials }}</span>
                 </v-avatar>
               </template>
             </v-list-item>
@@ -182,6 +189,15 @@ const isRefreshing = ref(false);
 
 const router = useRouter();
 const goToDashboard = () => router.push('/');
+
+const companyLogoUrl = computed(() => {
+  const logoPath = authStore.user?.empresa?.logo_path;
+  if (!logoPath) {
+    return null; // No hay logo
+  }
+  // Construimos la URL completa: http://localhost:8000/storage/logos-empresas/archivo.png
+  return `${config.public.apiBaseUrl}/storage/${logoPath}`;
+});
 
 const companyHeaderText = computed(() => {
   if (!authStore.user) return '';
