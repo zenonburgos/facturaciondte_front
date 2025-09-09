@@ -818,21 +818,39 @@ const filteredMunicipios = computed(() => {
   return selectedDept ? selectedDept.municipios : [];
 });
 
-const precioUnitarioLabel = computed(() => 
-  form.value.tipo_dte === '01' ? 'Precio Unitario (con IVA)' : 'Precio Unitario (sin IVA)'
-);
+// const precioUnitarioLabel = computed(() => 
+//   form.value.tipo_dte === '01' ? 'Precio Unitario (con IVA)' : 'Precio Unitario (sin IVA)'
+// );
+
+const precioUnitarioLabel = computed(() => 'Precio Unitario (con IVA)');
+
+// const subtotales = computed(() => {
+//   const subTotal = form.value.items.reduce((acc, item) => acc + (item.cantidad * item.precio_unitario), 0);
+//   if (form.value.tipo_dte === '01') {
+//     const total = subTotal;
+//     const baseImponible = total / 1.13;
+//     const iva = total - baseImponible;
+//     return { subTotal: baseImponible, iva: iva, total: total };
+//   } else {
+//     const iva = subTotal * 0.13;
+//     return { subTotal: subTotal, iva: iva, total: subTotal + iva };
+//   }
+// });
 
 const subtotales = computed(() => {
-  const subTotal = form.value.items.reduce((acc, item) => acc + (item.cantidad * item.precio_unitario), 0);
-  if (form.value.tipo_dte === '01') {
-    const total = subTotal;
-    const baseImponible = total / 1.13;
-    const iva = total - baseImponible;
-    return { subTotal: baseImponible, iva: iva, total: total };
-  } else {
-    const iva = subTotal * 0.13;
-    return { subTotal: subTotal, iva: iva, total: subTotal + iva };
+  // El 'total' es la suma de los precios que el usuario ingresó (que ya incluyen IVA)
+  const total = form.value.items.reduce((acc, item) => acc + (item.cantidad * item.precio_unitario), 0);
+  
+  // Si el total es 0, no hay nada que calcular.
+  if (total === 0) {
+      return { subTotal: 0, iva: 0, total: 0 };
   }
+
+  // La lógica de desglose es la misma tanto para FE como para CCFE
+  const baseImponible = total / 1.13;
+  const iva = total - baseImponible;
+  
+  return { subTotal: baseImponible, iva: iva, total: total };
 });
 
 const validationErrors = computed(() => {
