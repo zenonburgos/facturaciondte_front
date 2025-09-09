@@ -18,8 +18,30 @@
               <v-col cols="12" md="4"><v-text-field label="NIT" v-model="editedItem.nit"></v-text-field></v-col>
               <v-col cols="12" md="4"><v-text-field label="NRC" v-model="editedItem.nrc"></v-text-field></v-col>
               <v-col cols="12" md="4"><v-text-field label="Teléfono" v-model="editedItem.telefono"></v-text-field></v-col>
-              <v-col cols="12" md="4"><v-text-field label="Código de Actividad" v-model="editedItem.cod_actividad"></v-text-field></v-col>
-              <v-col cols="12" md="8"><v-text-field label="Descripción de Actividad" v-model="editedItem.desc_actividad"></v-text-field></v-col>
+             <v-col cols="12">
+              <v-autocomplete
+                v-model="selectedActividad"
+                v-model:search="actividadSearchTerm"
+                :items="actividadResults"
+                :loading="actividadLoading"
+                item-title="descripcion"
+                item-value="codigo"
+                return-object
+                label="Buscar Actividad Económica (por código o descripción)"
+                placeholder="Escribe para buscar..."
+                no-filter
+                clearable
+              >
+                <template v-slot:item="{ props, item }">
+                  <v-list-item
+                    v-bind="props"
+                    :title="item.raw.descripcion"
+                    :subtitle="`Código: ${item.raw.codigo}`"
+                  ></v-list-item>
+                </template>
+              </v-autocomplete>
+            </v-col>
+
               <v-col cols="12"><v-text-field label="Correo Electrónico" v-model="editedItem.correo" type="email"></v-text-field></v-col>
             </v-row>
             <!-- SECCIÓN PARA OTROS DOCUMENTOS (DUI, Pasaporte, etc.) -->
@@ -138,6 +160,12 @@ const tableOptions = ref({
   sortBy: [],
 });
 
+const actividadSearchTerm = ref('');
+const actividadResults = ref([]);
+const actividadLoading = ref(false);
+const selectedActividad = ref(null);
+let actividadTimeout = null;
+
 // --- CORRECCIÓN 1: Variable para el "debouncing" de la búsqueda ---
 let searchTimeout = null;
 
@@ -169,6 +197,41 @@ const filteredMunicipios = computed(() => {
   if (!editedItem.value.direccion?.departamento) return [];
   const selectedDept = locations.value.find(d => d.codigo === editedItem.value.direccion.departamento);
   return selectedDept ? selectedDept.municipios : [];
+});
+
+
+watch(actividadSearchTerm, (newVal) => {
+    // Si el texto de búsqueda es el de la actividad ya seleccionada, no hacemos nada.
+    if (selectedActividad.value && newVal === selectedActividad.value.descripcion) return;
+
+    clearTimeout(actividadTimeout);
+    if (newVal && newVal.length >= 2) {
+        actividadTimeout = setTimeout(async () => {
+            actividadLoading.value = true;
+            try {
+                const response = await $api(`/api/actividades-economicas/search?term=${newVal}`);
+                actividadResults.value = response;
+            } catch (error) {
+                notificationStore.showNotification({ message: 'Error al buscar actividades económicas.', color: 'error' });
+            } finally {
+                actividadLoading.value = false;
+            }
+        }, 500); // Debounce de 500ms
+    } else {
+        actividadResults.value = [];
+    }
+});
+
+// --- NUEVO WATCHER PARA AUTO-COMPLETAR LOS CAMPOS ---
+watch(selectedActividad, (selection) => {
+    if (selection && typeof selection === 'object') {
+        editedItem.value.cod_actividad = selection.codigo;
+        editedItem.value.desc_actividad = selection.descripcion;
+    } else if (!selection) {
+        // Si el usuario limpia el campo, limpiamos los datos en el formulario
+        editedItem.value.cod_actividad = '';
+        editedItem.value.desc_actividad = '';
+    }
 });
 
 watch(() => editedItem.value.direccion.departamento, () => {
@@ -227,16 +290,26 @@ async function loadItems(options) {
 
 
 function openNewClientDialog() {
-  editedItem.value = JSON.parse(JSON.stringify(defaultItem));
-  dialog.value.show = true;
+    editedItem.value = JSON.parse(JSON.stringify(defaultItem));
+    selectedActividad.value = null; // Aseguramos que el campo esté vacío para un nuevo cliente
+    dialog.value.show = true;
 }
 
 function openEditDialog(item) {
   editedItem.value = JSON.parse(JSON.stringify(item));
-  if (!editedItem.value.direccion) {
-    editedItem.value.direccion = { departamento: null, municipio: null, complemento: '' };
-  }
-  dialog.value.show = true;
+    if (!editedItem.value.direccion) {
+        editedItem.value.direccion = { departamento: null, municipio: null, complemento: '' };
+    }
+    // Para que el v-autocomplete muestre la actividad actual al editar
+    if (item.cod_actividad && item.desc_actividad) {
+        selectedActividad.value = { 
+            codigo: item.cod_actividad, 
+            descripcion: item.desc_actividad 
+        };
+    } else {
+        selectedActividad.value = null;
+    }
+    dialog.value.show = true;
 }
 
 function openDeleteDialog(item) {
