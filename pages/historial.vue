@@ -299,7 +299,7 @@
           </v-btn>
 
           <v-btn 
-            v-if="item.estado === 'PROCESADO' && item.tipo_dte === '01'" 
+            v-if="item.estado === 'PROCESADO'" 
             icon="mdi-cancel" 
             variant="text" 
             color="error" 
