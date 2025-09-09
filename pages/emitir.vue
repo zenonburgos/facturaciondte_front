@@ -529,7 +529,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, onActivated } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '~/stores/auth';
 import { useNotificationStore } from '~/stores/notifications';
@@ -665,6 +665,8 @@ onMounted(async () => {
     documentTypes.value = types;
     locations.value = fetchedLocations;
 
+    setDefaultPuntoDeVenta();
+
     console.log("Datos de localidades recibidos de la API:", fetchedLocations);
     
     // if (fetchedGenericClient && fetchedGenericClient.data.id) {
@@ -725,6 +727,13 @@ onMounted(async () => {
     initialLoading.value = false;
   }
 });
+
+onActivated(() => {
+  // Cuando el usuario vuelve a esta vista, nos aseguramos de que el punto de venta
+  // esté seleccionado si es que se des-seleccionó por alguna razón.
+  setDefaultPuntoDeVenta();
+});
+
 
 // watch(() => form.value.tipo_dte, (newType) => {
 //   // Definimos una lista de los DTEs que no pueden usar un cliente genérico.
@@ -1258,6 +1267,21 @@ function productSelected(value) {
     newItem.value.descripcion = '';
     newItem.value.codigo = null;
     newItem.value.precio_unitario = 0;
+  }
+}
+
+function setDefaultPuntoDeVenta() {
+  if (authStore.isAuthenticated && authStore.user) {
+    puntosDeVentaPermitidos.value = authStore.user.puntos_de_venta_permitidos || [];
+    
+    // Solo reasignamos si el campo está vacío, para no sobreescribir una selección manual
+    if (!form.value.punto_de_venta_id) {
+        if (authStore.user.default_punto_de_venta) {
+            form.value.punto_de_venta_id = authStore.user.default_punto_de_venta.id;
+        } else if (puntosDeVentaPermitidos.value.length > 0) {
+            form.value.punto_de_venta_id = puntosDeVentaPermitidos.value[0].id;
+        }
+    }
   }
 }
 </script>
