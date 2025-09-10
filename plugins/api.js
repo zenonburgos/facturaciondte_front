@@ -1,5 +1,6 @@
 import { useAuthStore } from '~/stores/auth';
 import { useNotificationStore } from '~/stores/notifications';
+import { useRouter } from 'vue-router'; 
 
 export default defineNuxtPlugin((nuxtApp) => {
   const config = useRuntimeConfig();
@@ -18,22 +19,25 @@ export default defineNuxtPlugin((nuxtApp) => {
     
     // La lógica mejorada ahora está aquí
     onResponseError({ request, response, error }) {
-      console.log('TRACE 1: onResponseError se ha disparado.');
         const authStore = useAuthStore();
         const notificationStore = useNotificationStore();
+        const router = useRouter(); // Obtenemos la instancia del router
 
-        // --- Caso 1: Error de Sesión (Logout Forzoso) ---
         const isAuthError = response && (response.status === 401 || response.status === 419);
         const isCriticalUserError = response && response.status === 500 && new URL(request).pathname === '/api/user';
 
+        // Si es un error de autenticación...
         if (isAuthError || isCriticalUserError) {
-          console.log('TRACE 2: Es un error de autenticación. Llamando a authStore.logout().'); // <--- AÑADIR ESTO
+          // ...y el usuario NO está ya en la página de login...
+          if (router.currentRoute.value.path !== '/login') {
             notificationStore.showNotification({ 
-            message: 'Tu sesión ha expirado o es inválida. Por favor, inicia sesión de nuevo.', 
-            color: 'error' 
+              message: 'Tu sesión ha expirado o es inválida. Por favor, inicia sesión de nuevo.', 
+              color: 'error' 
             });
+            // ...entonces sí cerramos la sesión.
             authStore.logout();
-            return;
+          }
+          return; // Detenemos la ejecución para no mostrar otros errores
         }
     }
   });
