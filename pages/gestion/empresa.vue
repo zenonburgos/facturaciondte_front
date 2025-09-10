@@ -10,6 +10,25 @@
       <v-form ref="form" @submit.prevent="saveEmpresa">
         <v-card-text>
           <v-row>
+            <!-- Sección del Logo -->
+            <v-col cols="12" class="text-center mb-4">
+              <v-avatar size="120" color="grey-lighten-3" class="elevation-2">
+                <v-img :src="logoPreviewUrl" cover alt="Logo de la empresa"></v-img>
+              </v-avatar>
+              <v-file-input
+                v-model="logoFile"
+                label="Cambiar logo"
+                accept="image/*"
+                prepend-icon="mdi-camera"
+                class="mx-auto mt-4"
+                style="max-width: 300px;"
+                density="compact"
+                variant="outlined"
+                @update:model-value="onFileChange"
+              ></v-file-input>
+            </v-col>
+
+            <!-- Campos de Texto -->
             <v-col cols="12" md="6">
               <v-text-field
                 v-model="empresa.nombre"
@@ -37,13 +56,13 @@
                 :rules="[rules.required]"
               ></v-text-field>
             </v-col>
-             <v-col cols="12" md="6">
+            <v-col cols="12" md="6">
               <v-text-field
                 v-model="empresa.telefono"
                 label="Teléfono"
               ></v-text-field>
             </v-col>
-             <v-col cols="12" md="6">
+            <v-col cols="12" md="6">
               <v-text-field
                 v-model="empresa.correo_electronico"
                 label="Correo Electrónico"
@@ -55,11 +74,43 @@
           <v-divider class="my-4"></v-divider>
           <h4 class="mb-2">Dirección</h4>
           
-          <v-textarea
-            v-model="empresa.direccion.complemento"
-            label="Dirección Completa (Departamento, Municipio, Calle, Colonia, etc.)"
-            rows="2"
-          ></v-textarea>
+          <v-row>
+            <v-col cols="12" md="6">
+              <v-select
+                v-model="empresa.direccion.departamento"
+                :items="departments"
+                item-title="title"
+                item-value="value"
+                label="Departamento"
+                :loading="loadingLocations"
+                :rules="[rules.required]"
+                variant="outlined"
+                density="compact"
+              ></v-select>
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-select
+                v-model="empresa.direccion.municipio"
+                :items="municipalities"
+                item-title="title"
+                item-value="value"
+                label="Municipio"
+                :disabled="!empresa.direccion.departamento"
+                :rules="[rules.required]"
+                variant="outlined"
+                density="compact"
+              ></v-select>
+            </v-col>
+            <v-col cols="12">
+              <v-textarea
+                v-model="empresa.direccion.complemento"
+                label="Complemento (Calle, # Casa, Colonia...)"
+                rows="2"
+                :rules="[rules.required]"
+                variant="outlined"
+              ></v-textarea>
+            </v-col>
+          </v-row>
 
         </v-card-text>
         <v-card-actions>
@@ -79,59 +130,118 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed, watch, nextTick } from 'vue';
 import { useNuxtApp } from '#app';
 import { useNotificationStore } from '~/stores/notifications';
+import { useAuthStore } from '~/stores/auth';
 
 const { $api } = useNuxtApp();
 const notificationStore = useNotificationStore();
+const authStore = useAuthStore();
+const config = useRuntimeConfig();
 
 const form = ref(null);
 const loading = ref(true);
 const empresa = ref({
-  // Inicializamos la estructura para evitar errores en el renderizado
-  direccion: {
-    complemento: ''
-  }
+  direccion: { departamento: null, municipio: null, complemento: '' }
 });
+const logoFile = ref(null);
+const logoPreviewUrl = ref(null);
+
+const locations = ref([]);
+const loadingLocations = ref(false);
+
+const isInitialLoad = ref(true); // Flag to prevent watcher on initial load
 
 const rules = {
   required: value => !!value || 'Este campo es requerido.',
 };
 
-// Al montar el componente, cargamos los datos de la empresa
 onMounted(async () => {
+  loading.value = true;
+  await fetchLocations();
   await fetchEmpresa();
+  loading.value = false;
+  // After the DOM has had a chance to update with the fetched data...
+  nextTick(() => {
+    // ...we can safely say the initial load is complete.
+    isInitialLoad.value = false;
+  });
 });
 
+async function fetchLocations() {
+    loadingLocations.value = true;
+    try {
+        locations.value = await $api('/api/locations');
+    } catch (err) {
+        notificationStore.showNotification({ message: 'No se pudieron cargar las ubicaciones.', color: 'error' });
+    } finally {
+        loadingLocations.value = false;
+    }
+}
+
+const departments = computed(() => {
+  return locations.value.map(dep => ({
+    title: dep.nombre,
+    value: dep.codigo,
+  }));
+});
+
+const municipalities = computed(() => {
+  if (!empresa.value.direccion.departamento) return [];
+  const selectedDep = locations.value.find(dep => dep.codigo === empresa.value.direccion.departamento);
+  return selectedDep ? selectedDep.municipios.map(mun => ({ title: mun.nombre, value: mun.codigo })) : [];
+});
+
+watch(() => empresa.value.direccion.departamento, (newVal, oldVal) => {
+    // Now, this only runs on changes made BY THE USER after the initial load.
+    if (!isInitialLoad.value && newVal !== oldVal) {
+        empresa.value.direccion.municipio = null;
+    }
+});
+
+
 async function fetchEmpresa() {
-  loading.value = true;
   try {
     const data = await $api('/api/empresa');
-
-    // --- INICIO DE LA CORRECCIÓN ---
-    // Primero, verificamos si la dirección existe y es un string.
+    
     if (data.direccion && typeof data.direccion === 'string') {
       try {
-        // Si es un string, intentamos "desempaquetarlo" (parsearlo) para convertirlo en un objeto.
         data.direccion = JSON.parse(data.direccion);
       } catch (e) {
-        // Si el string no es un JSON válido, lo registramos en consola y creamos un objeto vacío para evitar que la app falle.
         console.error("Error al parsear la dirección JSON:", e);
-        data.direccion = { complemento: '' };
+        data.direccion = { departamento: null, municipio: null, complemento: '' };
       }
     } else if (!data.direccion) {
-      // Si la dirección viene como nula o indefinida, también nos aseguramos de que sea un objeto.
-      data.direccion = { complemento: '' };
+      data.direccion = { departamento: null, municipio: null, complemento: '' };
     }
-    // --- FIN DE LA CORRECCIÓN ---
-
+    
     empresa.value = data;
+    
+    if (data.logo_path) {
+        logoPreviewUrl.value = `${config.public.apiBaseUrl}/storage/${data.logo_path}`;
+    } else {
+        logoPreviewUrl.value = 'https://placehold.co/120x120/E0E0E0/757575?text=Logo';
+    }
 
   } catch (error) {
     notificationStore.showNotification({ message: 'Error al cargar los datos de la empresa.', color: 'error' });
-  } finally {
-    loading.value = false;
+  }
+}
+
+function onFileChange(files) {
+  // v-file-input puede devolver un array o un solo archivo
+  const file = Array.isArray(files) ? files[0] : files;
+  if (file) {
+    logoFile.value = file;
+    logoPreviewUrl.value = URL.createObjectURL(file);
+  } else {
+    logoFile.value = null;
+    if (empresa.value.logo_path) {
+        logoPreviewUrl.value = `${config.public.apiBaseUrl}/storage/${empresa.value.logo_path}`;
+    } else {
+        logoPreviewUrl.value = 'https://placehold.co/120x120/E0E0E0/757575?text=Logo';
+    }
   }
 }
 
@@ -140,12 +250,42 @@ async function saveEmpresa() {
   if (!valid) return;
 
   loading.value = true;
+
+  const formData = new FormData();
+
+  formData.append('nombre', empresa.value.nombre || '');
+  formData.append('nombre_comercial', empresa.value.nombre_comercial || '');
+  formData.append('nit', empresa.value.nit || '');
+  formData.append('nrc', empresa.value.nrc || '');
+  formData.append('telefono', empresa.value.telefono || '');
+  formData.append('correo_electronico', empresa.value.correo_electronico || '');
+  
+  formData.append('departamento', empresa.value.direccion.departamento || '');
+  formData.append('municipio', empresa.value.direccion.municipio || '');
+  formData.append('complemento', empresa.value.direccion.complemento || '');
+
+  if (logoFile.value) {
+    formData.append('logo', logoFile.value);
+  }
+
   try {
     const response = await $api('/api/empresa', {
-      method: 'PUT',
-      body: empresa.value // Llama al método 'update' del EmpresaController
+      method: 'POST',
+      body: formData,
     });
+
     notificationStore.showNotification({ message: response.message || 'Datos actualizados exitosamente.' });
+    
+    await authStore.fetchUser();
+    
+    // Asignamos la respuesta del servidor, que ya viene con la dirección como objeto
+    empresa.value = response.empresa;
+
+    if (response.empresa.logo_path) {
+        logoPreviewUrl.value = `${config.public.apiBaseUrl}/storage/${response.empresa.logo_path}?t=${new Date().getTime()}`;
+    }
+    logoFile.value = null;
+
   } catch (error) {
     const message = error.data?.message || 'Ocurrió un error al guardar los cambios.';
     notificationStore.showNotification({ message, color: 'error' });
@@ -154,3 +294,4 @@ async function saveEmpresa() {
   }
 }
 </script>
+
