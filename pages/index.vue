@@ -54,7 +54,7 @@
               <v-icon color="blue-darken-2">mdi-file-document-multiple-outline</v-icon>
             </v-avatar>
             <div>
-              <p class="text-caption">DTEs Emitidos ({{ formattedDisplayMonth }})</p>
+              <p class="text-caption">DTEs Procesados ({{ formattedDisplayMonth }})</p>
               <p class="text-h4 font-weight-bold">
                 <span v-if="!loading">{{ summary.dtes_del_mes }}</span>
                 <v-progress-circular v-else indeterminate size="32"></v-progress-circular>
