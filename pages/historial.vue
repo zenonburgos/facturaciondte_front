@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <v-container fluid  >
     <h1 class="mb-4">Historial de Documentos Emitidos</h1>
     <v-row class="mb-4">
       <v-col cols="12" sm="6" md="4">
@@ -221,9 +221,21 @@
           <p class="text-grey-darken-2 text-body-2">Intente ajustar los filtros de búsqueda.</p>
         </div>
       </template>
-        <template v-slot:item.tipo_dte="{ item }">
-          <v-chip small :color="getDteColor(item.tipo_dte)" density="compact" size="small">{{ getDteName(item.tipo_dte) }}</v-chip>
-        </template>
+        <!-- <template v-slot:item.tipo_dte="{ item }">
+          <v-avatar small :color="getDteColor(item.tipo_dte)" density="compact" size="small">
+            {{ getDteName(item.tipo_dte) }}
+          </v-avatar>
+        </template> -->
+      <template v-slot:item.tipo_dte="{ item }">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <v-avatar v-bind="props" :color="getDteColor(item.tipo_dte)" size="32">
+              <span class="text-white text-caption font-weight-bold">{{ getDteAbbreviation(item.tipo_dte) }}</span>
+            </v-avatar>
+          </template>
+          <span>{{ getDteName(item.tipo_dte) }}</span>
+        </v-tooltip>
+      </template>
         
         <template v-slot:item.codigo_generacion="{ item }">
           <div class="d-flex align-center">
@@ -246,20 +258,43 @@
           </div>
         </template>
 
-        <template v-slot:item.subtotal="{ item }">
+        <!-- <template v-slot:item.subtotal="{ item }">
           <span>${{ item.subtotal?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span>
         </template>
 
         <template v-slot:item.iva="{ item }">
           <span>${{ item.iva?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span>
+        </template> -->
+        <template v-slot:item.montos="{ item }">
+            <div>
+                <span>${{ item.subtotal?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span>
+                
+                <!-- Mostramos el IVA solo si es un Crédito Fiscal (tipo 03) -->
+                <div v-if="item.tipo_dte === '03'" class="text-caption text-grey-darken-1">
+                    <span class="font-weight-bold">IVA:</span> ${{ item.iva?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                </div>
+            </div>
         </template>
 
         <template v-slot:item.total="{ item }">
           <span class="font-weight-bold">${{ item.total?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span>
         </template>
         
-        <template v-slot:item.estado="{ item }">
+        <!-- <template v-slot:item.estado="{ item }">
           <v-chip small :color="getStatusColor(item.estado)" density="compact" size="small">{{ item.estado }}</v-chip>
+        </template> -->
+
+        <template v-slot:item.estado="{ item }">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <v-icon
+                v-bind="props"
+                :icon="getStatusIcon(item.estado)"
+                :color="getStatusColor(item.estado)"
+              ></v-icon>
+            </template>
+            <span>{{ item.estado }}</span>
+          </v-tooltip>
         </template>
 
         <template v-slot:item.fh_procesamiento="{ item }">
@@ -377,8 +412,9 @@ const headers = [
   { title: 'Número de Control', key: 'numero_control', sortable: false },
   { title: 'Código Generación', key: 'codigo_generacion', sortable: false },
   { title: 'Estado', key: 'estado' },
-  { title: 'Subtotal', key: 'subtotal', align: 'end', sortable: true },
-  { title: 'IVA', key: 'iva', align: 'end', sortable: true },
+  // { title: 'Subtotal', key: 'subtotal', align: 'end', sortable: true },
+  // { title: 'IVA', key: 'iva', align: 'end', sortable: true },
+  { title: 'Montos', key: 'montos', align: 'end', sortable: false },
   { title: 'Total', key: 'total', align: 'end', sortable: true },
   { title: 'Fecha Procesamiento', key: 'fh_procesamiento' },
   { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
@@ -624,21 +660,21 @@ async function submitInvalidation() {
   }
 }
 
-function getStatusColor(status) {
-  const colors = {
-    PROCESADO: 'success',
-    CONTINGENCIA_PENDIENTE: 'warning',
-    LOTE_ENVIADO: 'info',
-    RECHAZADO: 'error',
-    INVALIDADO: 'blue-grey',
-  };
-  return colors[status] || 'default';
-}
+// function getStatusColor(status) {
+//   const colors = {
+//     PROCESADO: 'success',
+//     CONTINGENCIA_PENDIENTE: 'warning',
+//     LOTE_ENVIADO: 'info',
+//     RECHAZADO: 'error',
+//     INVALIDADO: 'blue-grey',
+//   };
+//   return colors[status] || 'default';
+// }
 
-function getDteColor(type) {
-  const dte = documentTypes.value.find(t => t.value === type);
-  return dte ? 'primary' : 'grey';
-}
+// function getDteColor(type) {
+//   const dte = documentTypes.value.find(t => t.value === type);
+//   return dte ? 'primary' : 'grey';
+// }
 
 function getDteName(type) {
   const dte = documentTypes.value.find(t => t.value === type);
@@ -695,5 +731,53 @@ async function shareOnWhatsApp(item) {
   } finally {
     item.whatsAppLoading = false;
   }
+}
+
+function getDteAbbreviation(type) {
+  const abbreviations = {
+    '01': 'FAC',
+    '03': 'CCF',
+    '04': 'REM',
+    '05': 'NC',
+    '06': 'ND',
+    '07': 'CR',
+    '11': 'FEX',
+    '14': 'FSE',
+  };
+  return abbreviations[type] || 'DTE';
+}
+
+function getDteColor(type) {
+  const colors = {
+    '01': 'blue',
+    '03': 'green',
+    '04': 'blue-grey',
+    '05': 'orange-darken-2',
+    '06': 'purple',
+    '07': 'teal',
+    '11': 'indigo',
+    '14': 'cyan-darken-1',
+  };
+  return colors[type] || 'grey';
+}
+
+function getStatusColor(status) {
+  const colors = {
+    'PROCESADO': 'success',
+    'INVALIDADO': 'error',
+    'RECHAZADO': 'red-darken-3',
+    'CONTINGENCIA_PENDIENTE': 'warning',
+  };
+  return colors[status] || 'grey';
+}
+
+function getStatusIcon(status) {
+  const icons = {
+    'PROCESADO': 'mdi-check-circle',
+    'INVALIDADO': 'mdi-cancel',
+    'RECHAZADO': 'mdi-alert-circle',
+    'CONTINGENCIA_PENDIENTE': 'mdi-clock-alert-outline',
+  };
+  return icons[status] || 'mdi-help-circle';
 }
 </script>
