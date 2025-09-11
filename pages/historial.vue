@@ -213,6 +213,7 @@
         :items-length="totalItems"
         :loading="loading"
         @update:options="loadItemsWithOptions"
+        :row-props="getRowProps"
       >
       <template v-slot:no-data>
         <div class="pa-4 text-center">
@@ -780,4 +781,24 @@ function getStatusIcon(status) {
   };
   return icons[status] || 'mdi-help-circle';
 }
+
+function getRowProps({ item }) {
+  if (item.estado === 'INVALIDADO') {
+    return { class: 'invalid-row' };
+  }
+  return {};
+}
 </script>
+
+<style>
+
+.invalid-row {
+  filter: grayscale(90%);
+  opacity: 0.6;
+  transition: all 0.2s ease-in-out;
+}
+.invalid-row:hover {
+  filter: grayscale(0%);
+  opacity: 1;
+}
+</style>
