@@ -11,20 +11,28 @@
         <v-card-text>
           <v-row>
             <!-- Sección del Logo -->
-            <v-col cols="12" class="text-center mb-4">
-              <v-avatar size="120" color="grey-lighten-3" class="elevation-2">
-                <v-img :src="logoPreviewUrl" cover alt="Logo de la empresa"></v-img>
+            <v-col cols="12" class="d-flex flex-column align-center">
+              <p class="text-subtitle-1 font-weight-medium mb-2">Logotipo de la Empresa</p>
+              <v-avatar color="grey-lighten-3" size="120" class="mb-4 elevation-2">
+                <v-img
+                  v-if="logoPreviewUrl"
+                  :src="logoPreviewUrl"
+                  :alt="empresa.nombre"
+                  cover
+                ></v-img>
+                <v-icon v-else size="x-large" color="grey-darken-1">mdi-domain</v-icon>
               </v-avatar>
               <v-file-input
                 v-model="logoFile"
-                label="Cambiar logo"
-                accept="image/*"
+                label="Cambiar Logotipo (Máx. 2MB)"
+                accept="image/jpeg, image/png, image/gif"
                 prepend-icon="mdi-camera"
-                class="mx-auto mt-4"
-                style="max-width: 300px;"
-                density="compact"
                 variant="outlined"
+                density="compact"
+                :rules="logoRules"
                 @update:model-value="onFileChange"
+                style="max-width: 400px;"
+                clearable
               ></v-file-input>
             </v-col>
 
@@ -157,6 +165,20 @@ const rules = {
   required: value => !!value || 'Este campo es requerido.',
 };
 
+const logoRules = [
+  (file) => {
+    // Si no hay archivo (es null), la regla pasa
+    if (!file) return true;
+    
+    // 'file' es el objeto de archivo, no un array
+    if (file.size > 2 * 1024 * 1024) { // 2MB
+      return 'El logo no puede pesar más de 2MB.';
+    }
+    return true;
+  },
+];
+
+
 onMounted(async () => {
   loading.value = true;
   await fetchLocations();
@@ -219,9 +241,7 @@ async function fetchEmpresa() {
     empresa.value = data;
     
     if (data.logo_path) {
-        logoPreviewUrl.value = `${config.public.apiBaseUrl}/storage/${data.logo_path}`;
-    } else {
-        logoPreviewUrl.value = 'https://placehold.co/120x120/E0E0E0/757575?text=Logo';
+      logoPreviewUrl.value = `${config.public.apiBaseUrl}/storage/${data.logo_path}?v=${new Date().getTime()}`;
     }
 
   } catch (error) {
@@ -229,21 +249,17 @@ async function fetchEmpresa() {
   }
 }
 
-function onFileChange(files) {
-  // v-file-input puede devolver un array o un solo archivo
-  const file = Array.isArray(files) ? files[0] : files;
+function onFileChange(file) {
   if (file) {
-    logoFile.value = file;
+    // Si se selecciona un archivo, crea una URL para la vista previa
     logoPreviewUrl.value = URL.createObjectURL(file);
   } else {
-    logoFile.value = null;
-    if (empresa.value.logo_path) {
-        logoPreviewUrl.value = `${config.public.apiBaseUrl}/storage/${empresa.value.logo_path}`;
-    } else {
-        logoPreviewUrl.value = 'https://placehold.co/120x120/E0E0E0/757575?text=Logo';
-    }
+    // Si el usuario borra la selección, volvemos a mostrar el logo original
+    logoPreviewUrl.value = empresa.value.logo_path ? `${config.public.apiBaseUrl}/storage/${empresa.value.logo_path}?v=${new Date().getTime()}` : null;
   }
 }
+
+
 
 async function saveEmpresa() {
   const { valid } = await form.value.validate();
