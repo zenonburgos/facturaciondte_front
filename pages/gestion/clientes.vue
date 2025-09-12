@@ -137,7 +137,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, nextTick  } from 'vue';
 import { useNuxtApp } from '#app';
 import { useNotificationStore } from '~/stores/notifications';
 
@@ -296,11 +296,23 @@ function openNewClientDialog() {
 }
 
 function openEditDialog(item) {
-  editedItem.value = JSON.parse(JSON.stringify(item));
+    // Hacemos una copia profunda del item para evitar mutaciones no deseadas
+    editedItem.value = JSON.parse(JSON.stringify(item));
+
+    // Aseguramos que el objeto 'direccion' exista
     if (!editedItem.value.direccion) {
         editedItem.value.direccion = { departamento: null, municipio: null, complemento: '' };
     }
-    // Para que el v-autocomplete muestre la actividad actual al editar
+
+    // --- INICIO DE LA CORRECCIÓN ---
+    // Guardamos el municipio original porque lo vamos a necesitar
+    const municipioOriginal = editedItem.value.direccion.municipio;
+    
+    // Limpiamos temporalmente el municipio. Esto fuerza al v-select a reiniciarse.
+    editedItem.value.direccion.municipio = null;
+    // --- FIN DE LA CORRECCIÓN ---
+
+    // Lógica para el autocompletado de la actividad económica
     if (item.cod_actividad && item.desc_actividad) {
         selectedActividad.value = { 
             codigo: item.cod_actividad, 
@@ -309,7 +321,17 @@ function openEditDialog(item) {
     } else {
         selectedActividad.value = null;
     }
+
+    // Mostramos el diálogo
     dialog.value.show = true;
+
+    // --- INICIO DE LA CORRECCIÓN (PARTE 2) ---
+    // Usamos nextTick para asegurarnos de que la lista de municipios (filteredMunicipios)
+    // se haya actualizado antes de intentar asignar el valor.
+    nextTick(() => {
+        editedItem.value.direccion.municipio = municipioOriginal;
+    });
+    // --- FIN DE LA CORRERECCIÓN ---
 }
 
 function openDeleteDialog(item) {
