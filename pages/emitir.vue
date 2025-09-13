@@ -656,6 +656,8 @@ const dialog = ref({
 onMounted(async () => {
   initialLoading.value = true;
   try {
+    await authStore.fetchUser();
+    
     const { $api } = useNuxtApp();
     const [types, fetchedLocations] = await Promise.all([
       $api('/api/document-types'),
@@ -668,6 +670,10 @@ onMounted(async () => {
     setDefaultPuntoDeVenta();
 
     console.log("Datos de localidades recibidos de la API:", fetchedLocations);
+
+    console.log('Puntos de Venta para el selector:', authStore.user?.puntos_de_venta_permitidos);
+
+    setDefaultPuntoDeVenta();
     
     // if (fetchedGenericClient && fetchedGenericClient.data.id) {
     //   genericClient.value = fetchedGenericClient.data;
@@ -729,8 +735,7 @@ onMounted(async () => {
 });
 
 onActivated(() => {
-  // Cuando el usuario vuelve a esta vista, nos aseguramos de que el punto de venta
-  // esté seleccionado si es que se des-seleccionó por alguna razón.
+  consola.log('Datos de Puntos de Venta recibidos:', authStore.user?.puntos_de_venta_permitidos);
   setDefaultPuntoDeVenta();
 });
 

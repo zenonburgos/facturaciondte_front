@@ -72,6 +72,9 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async fetchUser() {
+      if (this.user) {
+        return;
+      }
       if (this.token) {
         try {
           const { $api } = useNuxtApp();
