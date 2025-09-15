@@ -4,7 +4,7 @@
       <v-col cols="12" md="8">
         <v-card class="pa-4 pa-md-6 mt-5">
           <v-card-title class="text-h4 font-weight-bold mb-4">
-            Acerca de SmartDTE
+            Acerca de DTE-VILLALOBOS
           </v-card-title>
           <v-card-text class="text-body-1">
             <p class="mb-4">

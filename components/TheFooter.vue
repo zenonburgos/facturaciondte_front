@@ -17,7 +17,7 @@
     <v-divider class="my-2" style="width: 80%; max-width: 500px;"></v-divider>
 
     <div>
-      © {{ new Date().getFullYear() }} — <strong>[Nombre de tu Aplicación]</strong> - Todos los derechos reservados.
+      © {{ new Date().getFullYear() }} — <strong>DTE VILLALOBOS</strong> - Todos los derechos reservados.
     </div>
   </v-footer>
 </template>
