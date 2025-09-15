@@ -14,37 +14,7 @@
             <v-btn icon="mdi-close" @click="notificationStore.show = false"></v-btn>
           </template>
         </v-snackbar>
-        <v-spacer></v-spacer>
 
-      <!-- ✅ --- INICIO: SELECTOR DE EMPRESA PARA SUPER ADMIN --- ✅ -->
-      <div v-if="authStore.user?.is_super_admin" class="mr-4" style="max-width: 300px;">
-        <v-select
-          v-model="selectedTenantId"
-          :items="authStore.user.available_tenants || []"
-          item-title="nombre"
-          item-value="id"
-          label="Trabajando en"
-          density="compact"
-          hide-details
-          variant="solo-filled"
-          @update:modelValue="handleTenantChange"
-        >
-          <template v-slot:prepend-inner>
-            <v-icon icon="mdi-domain" class="mr-2"></v-icon>
-          </template>
-        </v-select>
-      </div>
-      <!-- ✅ --- FIN: SELECTOR DE EMPRESA --- ✅ -->
-        <!-- <v-alert
-          v-if="!authStore.isBackendOnline"
-          type="error"
-          density="compact"
-          class="text-center"
-          style="position: sticky; top: 0; z-index: 1005;"
-          tile
-        >
-          Se ha perdido la conexión con el servidor. Algunas funciones pueden no estar disponibles.
-        </v-alert> -->
         <v-alert
           v-if="authStore.isContingencyMode"
           type="warning"
@@ -58,7 +28,7 @@
           **MODO DE CONTINGENCIA ACTIVADO** - Los documentos se guardarán localmente para su envío posterior.
           <v-btn size="small" variant="text" class="ml-4">Sincronizar</v-btn>
         </v-alert>
-        <!-- <v-navigation-drawer v-model="drawer" color="grey-lighten-4" app> -->
+
         <v-navigation-drawer v-model="drawer" app class="custom-sidebar">
           <v-list>
             <v-list-item
@@ -76,21 +46,9 @@
                     :alt="companyHeaderText"
                     cover
                   ></v-img>
-
                   <span v-else class="text-h6 text-primary">{{ userInitials }}</span>
                 </v-avatar>
               </template>
-              <div v-if="authStore.dteEnvironment" class="mt-2">
-                <v-chip
-                  :color="authStore.dteEnvironment.color"
-                  size="small"
-                  label
-                  variant="tonal"
-                  prepend-icon="mdi-server-network"
-                >
-                  Ambiente: <strong>{{ authStore.dteEnvironment.text }}</strong>
-                </v-chip>
-              </div>
             </v-list-item>
           </v-list>
 
@@ -122,6 +80,7 @@
             </template>
           </v-list>
         </v-navigation-drawer>
+        
         <v-app-bar app style="z-index: 1010;">
           <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
 
@@ -134,7 +93,7 @@
             class="mr-2"
             @click="goToDashboard"
             style="cursor: pointer;"
-        ></v-img>
+          ></v-img>
 
           <v-chip
             v-if="activeCompanyName"
@@ -149,6 +108,24 @@
           </v-chip>
           
           <v-spacer></v-spacer>
+
+          <div v-if="authStore.user?.is_super_admin" class="mr-4" style="max-width: 300px;">
+            <v-select
+              v-model="selectedTenantId"
+              :items="authStore.user.available_tenants || []"
+              item-title="nombre"
+              item-value="id"
+              label="Trabajando en"
+              density="compact"
+              hide-details
+              variant="solo-filled"
+              @update:modelValue="handleTenantChange"
+            >
+              <template v-slot:prepend-inner>
+                <v-icon icon="mdi-domain" class="mr-2"></v-icon>
+              </template>
+            </v-select>
+          </div>
 
           <v-menu v-if="authStore.isAuthenticated" location="bottom">
             <template v-slot:activator="{ props }">
@@ -179,14 +156,13 @@
               </v-list-item>
               <v-divider class="my-2"></v-divider>
               <v-list-item @click="handleLogout" link>
-                <template v-slot:prepend>
-                  <v-icon>mdi-logout</v-icon>
-                </template>
-                <v-list-item-title>Cerrar Sesión</v-list-item-title>
+                  <template v-slot:prepend>
+                      <v-icon>mdi-logout</v-icon>
+                  </template>
+                  <v-list-item-title>Cerrar Sesión</v-list-item-title>
               </v-list-item>
             </v-list>
           </v-menu>
-
         </v-app-bar>
 
         <v-main>
@@ -201,7 +177,6 @@
           <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
         </div>
       </template>
-
     </client-only>
   </div>
 </template>

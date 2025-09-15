@@ -1,4 +1,4 @@
-  <template>
+<template>
   <div>
     <div class="d-flex align-center mb-6">
       <v-icon size="x-large" color="primary" class="mr-4">mdi-chart-line</v-icon>

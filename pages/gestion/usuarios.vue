@@ -103,6 +103,29 @@
             </v-card-actions>
         </v-card>
     </v-dialog>
+    
+    <v-dialog v-model="isDetailDialogVisible" max-width="600px">
+      <v-card>
+        <v-card-title>
+          <span class="text-h5">Detalles del Usuario</span>
+          <v-spacer></v-spacer>
+          <v-btn icon @click="isDetailDialogVisible = false" variant="text">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+        
+        <v-divider></v-divider>
+        
+        <v-card-text>
+          <div v-if="isLoadingDetails" class="text-center pa-8">
+            <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
+            <div class="mt-4 text-grey">Cargando detalles...</div>
+          </div>
+          
+          <UserDetailCard v-else-if="selectedUserDetails" :user="selectedUserDetails" />
+        </v-card-text>
+      </v-card>
+    </v-dialog>
 
     <v-card>
       <v-data-table
@@ -126,8 +149,10 @@
         </template>
         
         <template v-slot:item.actions="{ item }">
-          <v-icon class="me-2" @click="openEditDialog(item)">mdi-pencil</v-icon>
-          <v-icon @click="openDeleteDialog(item)">mdi-delete</v-icon>
+          <v-icon class="me-2" @click="showUserDetails(item.id)" color="info">mdi-eye</v-icon>
+
+            <v-icon class="me-2" @click="openEditDialog(item)">mdi-pencil</v-icon>
+          <v-icon @click="openDeleteDialog(item)" color="error">mdi-delete</v-icon>
         </template>
       </v-data-table>
     </v-card>
@@ -139,6 +164,11 @@ import { ref, computed, onMounted } from 'vue';
 import { useNuxtApp } from '#app';
 import { useAuthStore } from '~/stores/auth';
 import { useNotificationStore } from '~/stores/notifications';
+import UserDetailCard from '~/components/UserDetailCard.vue';
+
+const isDetailDialogVisible = ref(false);
+const selectedUserDetails = ref(null);
+const isLoadingDetails = ref(false);
 
 const { $api } = useNuxtApp();
 const authStore = useAuthStore();
@@ -296,5 +326,25 @@ function extractPosIds(permissions) {
 function getPosName(posId) {
     const pos = availablePos.value.find(p => p.id === posId);
     return pos ? pos.nombre : `ID: ${posId}`;
+}
+
+async function showUserDetails(userId) {
+  // Reseteamos el estado anterior y mostramos el loader
+  selectedUserDetails.value = null;
+  isLoadingDetails.value = true;
+  isDetailDialogVisible.value = true;
+
+  try {
+    const { $api } = useNuxtApp();
+    // 2. Llamamos al endpoint del backend que preparamos
+    const userData = await $api(`/api/users/${userId}`);
+    selectedUserDetails.value = userData;
+  } catch (error) {
+    console.error("Error al cargar los detalles del usuario:", error);
+    // Aquí podrías mostrar una notificación de error
+    isDetailDialogVisible.value = false; // Cierra el diálogo si hay error
+  } finally {
+    isLoadingDetails.value = false;
+  }
 }
 </script>
