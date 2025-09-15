@@ -6,13 +6,20 @@ export const useAuthStore = defineStore('auth', {
   state: () => ({
     token: useCookie('auth_token').value || null, // Leemos el token de una cookie si existe
     user: null,
+    activeTenant: null, 
     backendStatus: 'online',
     isContingencyMode: false,
   }),
 
   getters: {
     isAuthenticated: (state) => !!state.token,
-    //isBackendOnline: (state) => state.backendStatus === 'online',
+    // ✅ NUEVO: Getter para saber en qué empresa estamos trabajando
+    // Para un usuario normal, siempre será su propia empresa.
+    // Para un Super Admin, será la que haya seleccionado.
+    getActiveTenant: (state) => {
+      if (!state.user) return null;
+      return state.user.is_super_admin ? state.activeTenant : state.user.empresa;
+    }
   },
 
   actions: {
@@ -32,16 +39,38 @@ export const useAuthStore = defineStore('auth', {
         });
 
         if (response.access_token) {
-          // Si es exitoso, guardamos el token y los datos del usuario
           this.setToken(response.access_token);
-          // this.setUser(response.user);
-          await this.fetchUser();
-          console.log("Login exitoso. Token y usuario guardados."); // Log para verificar
+          // Guardamos el usuario que viene en la respuesta del login
+          this.setUser(response.user);
+
+          // ✅ --- LÓGICA DE REDIRECCIÓN --- ✅
+          if (this.user.is_super_admin) {
+            // Si es Super Admin, lo redirigimos al panel de Filament.
+            // Usamos window.location para una redirección completa fuera de la app de Nuxt.
+            const adminUrl = useRuntimeConfig().public.adminUrl;
+            window.location.href = adminUrl || '/admin';
+          } else {
+            // Si es un usuario normal, vamos al dashboard de Nuxt.
+            const router = useRouter();
+            const route = useRoute();
+            const redirectPath = route.query.redirect ? decodeURIComponent(route.query.redirect) : '/';
+            await router.push(redirectPath);
+          }
           return true;
         }
       } catch (error) {
         console.error('Error en el store de login:', error.data);
         throw error;
+      }
+    },
+
+    // ✅ NUEVA ACCIÓN: Para que el Super Admin pueda cambiar de empresa
+    setActiveTenant(tenant) {
+      if (this.user && this.user.is_super_admin) {
+        this.activeTenant = tenant;
+        // Opcional: podrías guardar esto en localStorage para persistencia
+        // y recargar la página para refrescar todos los datos.
+        window.location.reload(); 
       }
     },
 

@@ -116,7 +116,8 @@
                 variant="outlined"
                 density="compact"
                 hint="Solo letras, números, guiones y guiones bajos."
-              ></v-text-field>
+                @focus="isUsernameManuallyEdited = true" >
+              </v-text-field>
             </v-col>
             <v-col cols="12">
               <v-text-field v-model="form.user_email" label="Tu Correo (para el inicio de sesión)" :rules="[rules.required, rules.email]" type="email" variant="outlined" density="compact"></v-text-field>
@@ -147,7 +148,26 @@
               <v-text-field v-model="form.mh_password_certificado" label="Contraseña del Certificado (.p12)" type="password" variant="outlined" density="compact"></v-text-field>
             </v-col>
           </v-row>
-
+          <v-row>
+            <v-col cols="12">
+              <v-file-input
+                v-model="form.certificado_file"
+                label="Certificado de Firma (.crt)"
+                accept=".crt"
+                :rules="[rules.required, rules.certificateName]"
+                variant="outlined"
+                density="compact"
+                hint="El nombre del archivo debe ser su NIT. Ejemplo: 01010101010101.crt"
+                persistent-hint
+              ></v-file-input>
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field v-model="form.mh_password_api" label="Contraseña API de Hacienda" type="password" variant="outlined" density="compact"></v-text-field>
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field v-model="form.mh_password_certificado" label="Contraseña del Certificado (.p12)" type="password" variant="outlined" density="compact"></v-text-field>
+            </v-col>
+          </v-row>
           <v-alert v-if="error" type="error" dense class="my-4" variant="tonal">
             <template v-slot:title>
               <span class="font-weight-bold">Error en el Registro</span>
@@ -188,6 +208,8 @@ definePageMeta({
   layout: 'login', // Usamos el layout de login para una apariencia consistente
 });
 
+const isUsernameManuallyEdited = ref(false);
+
 const router = useRouter();
 const notificationStore = useNotificationStore();
 const formRef = ref(null);
@@ -209,7 +231,9 @@ const form = ref({
   user_email: '',
   user_password: '',
   user_password_confirmation: '',
+  certificado_file: null,
 });
+
 
 const locations = ref([]);
 const loadingLocations = ref(false);
@@ -253,6 +277,17 @@ watch(() => form.value.empresa_direccion.departamento, (newDepartment, oldDepart
   }
 });
 
+watch(() => form.value.empresa_correo, (newEmail) => {
+  form.value.user_email = newEmail;
+});
+
+watch(() => form.value.user_email, (newEmail) => {
+  if (newEmail && !isUsernameManuallyEdited.value) {
+    // Tomamos la parte antes del @
+    form.value.user_username = newEmail.split('@')[0];
+  }
+});
+
 
 // --- Lógica de Validación y Envío ---
 const rules = {
@@ -279,6 +314,13 @@ const rules = {
   
   // NUEVA: Regla para Teléfono de El Salvador
   phone: value => /^[67][0-9]{7}$/.test(value) || 'Debe ser un teléfono válido de 8 dígitos (iniciar con 6 o 7).',
+
+  certificateName: value => {
+    if (!value || value.length === 0) return true; // No validar si está vacío, para eso está 'required'
+    const fileName = value[0].name;
+    const expectedName = `${form.value.empresa_nit}.crt`;
+    return fileName === expectedName || `El nombre del archivo debe ser exactamente '${expectedName}'.`;
+  }
 };
 
 async function handleRegister() {
@@ -309,6 +351,10 @@ async function handleRegister() {
   // Añadir el archivo del logo si fue seleccionado
   if (form.value.logo_file && form.value.logo_file.length > 0) {
     formData.append('logo_file', form.value.logo_file[0]);
+  }
+
+  if (form.value.certificado_file && form.value.certificado_file.length > 0) {
+    formData.append('certificado_file', form.value.certificado_file[0]);
   }
 
   try {

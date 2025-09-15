@@ -1103,27 +1103,38 @@ async function submitDTE() {
     }
 
   } catch (err) {
-    // 1. Ponemos valores por defecto para un error genérico (conexión, etc.).
+    // 1. Valores por defecto para un error genérico (de red, servidor caído, etc.)
     let dialogTitle = 'Error de Transmisión';
-    let dialogMessage = 'No se pudo completar la solicitud. Revisa tu conexión a internet o contacta a soporte.';
+    let dialogMessage = 'No se pudo completar la solicitud. Revisa tu conexión o contacta a soporte.';
     let dialogDetails = err.data?.message || 'No hay detalles adicionales.';
 
-    // 2. Ahora, intentamos ser más específicos. 
-    //    Buscamos si el error viene de Hacienda (nuestro caso).
-    if (err.data && err.data.descripcionMsg) {
-      dialogTitle = 'Documento Rechazado por Hacienda';
-      dialogMessage = 'Hacienda ha rechazado el documento por la siguiente razón:';
-      // Usamos el mensaje específico de Hacienda como el detalle principal.
-      dialogDetails = err.data.descripcionMsg;
+    // 2. Revisamos si el error viene de nuestro backend con una respuesta estructurada.
+    //    (El objeto 'err.data' contiene la respuesta JSON del error de la API).
+    if (err.data) {
+        const errorData = err.data;
+
+        // ✅ ¡AQUÍ ESTÁ LA LÓGICA CLAVE!
+        // Prioridad #1: Buscamos nuestro mensaje personalizado para el error de ambiente.
+        if (errorData.custom_user_message) {
+            dialogTitle = '⚠️ Error de Configuración de Ambiente';
+            dialogMessage = 'Se ha detectado un problema con la configuración del ambiente de la empresa:';
+            dialogDetails = errorData.custom_user_message; // Usamos nuestro mensaje detallado y amigable.
+        } 
+        // Prioridad #2: Si no hay mensaje personalizado, buscamos el error estándar de Hacienda.
+        else if (errorData.descripcionMsg) {
+            dialogTitle = 'Documento Rechazado por Hacienda';
+            dialogMessage = 'Hacienda ha rechazado el documento por la siguiente razón:';
+            dialogDetails = errorData.descripcionMsg; // Usamos el mensaje genérico de Hacienda.
+        }
     }
 
-    // 3. Mostramos el diálogo con la información correcta y específica.
+    // 3. Finalmente, mostramos el diálogo con la información más específica que encontramos.
     resultDialog.value = {
-      show: true,
-      success: false,
-      title: dialogTitle,
-      message: dialogMessage,
-      details: dialogDetails
+        show: true,
+        success: false,
+        title: dialogTitle,
+        message: dialogMessage,
+        details: dialogDetails
     };
   } finally {
     // Nos aseguramos de que el estado de carga siempre se desactive.

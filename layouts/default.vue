@@ -14,6 +14,27 @@
             <v-btn icon="mdi-close" @click="notificationStore.show = false"></v-btn>
           </template>
         </v-snackbar>
+        <v-spacer></v-spacer>
+
+      <!-- ✅ --- INICIO: SELECTOR DE EMPRESA PARA SUPER ADMIN --- ✅ -->
+      <div v-if="authStore.user?.is_super_admin" class="mr-4" style="max-width: 300px;">
+        <v-select
+          v-model="selectedTenantId"
+          :items="authStore.user.available_tenants || []"
+          item-title="nombre"
+          item-value="id"
+          label="Trabajando en"
+          density="compact"
+          hide-details
+          variant="solo-filled"
+          @update:modelValue="handleTenantChange"
+        >
+          <template v-slot:prepend-inner>
+            <v-icon icon="mdi-domain" class="mr-2"></v-icon>
+          </template>
+        </v-select>
+      </div>
+      <!-- ✅ --- FIN: SELECTOR DE EMPRESA --- ✅ -->
         <!-- <v-alert
           v-if="!authStore.isBackendOnline"
           type="error"
@@ -175,15 +196,26 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useAuthStore } from '~/stores/auth'; // Importamos nuestro store
 import { useNotificationStore } from '~/stores/notifications';
 import { useRouter } from 'vue-router'; 
+
+const selectedTenantId = ref(null);
+
+const handleTenantChange = (tenantId) => {
+  const selectedTenant = authStore.user.available_tenants.find(t => t.id === tenantId);
+  if (selectedTenant) {
+    // Usamos la acción que ya creamos en el store
+    authStore.setActiveTenant(selectedTenant); 
+  }
+};
 
 const config = useRuntimeConfig();
 const adminUrl = config.public.adminUrl;
 const authStore = useAuthStore();
 const notificationStore = useNotificationStore();
+console.log('Roles del usuario en el frontend:', authStore.user?.roles);
 const drawer = ref(true);
 const isRefreshing = ref(false);
 
@@ -222,6 +254,19 @@ const companyLink = computed(() => {
     return '/gestion/empresa';
   }
   return null; // No será un enlace para otros roles
+});
+
+onMounted(() => {
+  const activeTenant = authStore.getActiveTenant;
+  if (activeTenant) {
+    selectedTenantId.value = activeTenant.id;
+  }
+});
+
+watch(() => authStore.getActiveTenant, (newTenant) => {
+  if (newTenant) {
+    selectedTenantId.value = newTenant.id;
+  }
 });
 
 async function handleLogout() {
