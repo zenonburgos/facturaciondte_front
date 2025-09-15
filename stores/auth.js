@@ -19,7 +19,25 @@ export const useAuthStore = defineStore('auth', {
     getActiveTenant: (state) => {
       if (!state.user) return null;
       return state.user.is_super_admin ? state.activeTenant : state.user.empresa;
-    }
+    },
+    dteEnvironment: (state) => {
+      // Verificamos que el usuario y la empresa existan
+      if (!state.user || !state.user.empresa) {
+        return null;
+      }
+
+      const ambiente = state.user.empresa.mh_ambiente;
+
+      if (ambiente === '00') {
+        return { text: 'Pruebas', color: 'blue-grey' };
+      }
+      if (ambiente === '01') {
+        return { text: 'Producción', color: 'success' };
+      }
+      
+      // Fallback por si el valor no es ninguno de los esperados
+      return { text: 'No Definido', color: 'grey' };
+    },
   },
 
   actions: {

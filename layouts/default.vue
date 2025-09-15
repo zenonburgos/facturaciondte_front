@@ -80,6 +80,17 @@
                   <span v-else class="text-h6 text-primary">{{ userInitials }}</span>
                 </v-avatar>
               </template>
+              <div v-if="authStore.dteEnvironment" class="mt-2">
+                <v-chip
+                  :color="authStore.dteEnvironment.color"
+                  size="small"
+                  label
+                  variant="tonal"
+                  prepend-icon="mdi-server-network"
+                >
+                  Ambiente: <strong>{{ authStore.dteEnvironment.text }}</strong>
+                </v-chip>
+              </div>
             </v-list-item>
           </v-list>
 
