@@ -138,29 +138,51 @@
             </template>
 
             <v-list density="compact">
-              <v-list-item>
-                <v-list-item-title class="font-weight-bold">{{ authStore.user?.name }}</v-list-item-title>
-                <v-list-item-subtitle>{{ authStore.user?.email }}</v-list-item-subtitle>
-              </v-list-item>
-              <v-divider class="my-2"></v-divider>
-              <v-list-item 
-                  v-if="userHasRole(['Admin'])" 
-                  :href="adminUrl" 
-                  target="_blank" 
-                  link
-              >
-                  <template v-slot:prepend>
-                      <v-icon>mdi-cog</v-icon>
-                  </template>
-                  <v-list-item-title>Panel de Administración</v-list-item-title>
-              </v-list-item>
-              <v-divider class="my-2"></v-divider>
-              <v-list-item @click="handleLogout" link>
-                  <template v-slot:prepend>
-                      <v-icon>mdi-logout</v-icon>
-                  </template>
-                  <v-list-item-title>Cerrar Sesión</v-list-item-title>
-              </v-list-item>
+                <v-list-item>
+                    <v-list-item-title class="font-weight-bold">{{ authStore.user?.name }}</v-list-item-title>
+                    <v-list-item-subtitle>{{ authStore.user?.email }}</v-list-item-subtitle>
+                </v-list-item>
+
+                <v-divider class="my-2"></v-divider>
+
+                <v-list-item v-if="authStore.user?.roles?.length > 0">
+                    <template v-slot:prepend>
+                        <v-icon size="small">mdi-shield-account-outline</v-icon>
+                    </template>
+                    <v-list-item-title class="text-caption">Rol</v-list-item-title>
+                    <v-list-item-subtitle class="font-weight-medium">{{ authStore.user.roles[0].name }}</v-list-item-subtitle>
+                </v-list-item>
+
+                <v-list-item v-if="authStore.user?.defaultPuntoDeVenta">
+                    <template v-slot:prepend>
+                        <v-icon size="small">mdi-point-of-sale</v-icon>
+                    </template>
+                    <v-list-item-title class="text-caption">Punto de Venta</v-list-item-title>
+                    <v-list-item-subtitle class="font-weight-medium">{{ authStore.user.defaultPuntoDeVenta.nombre }}</v-list-item-subtitle>
+                </v-list-item>
+
+                <template v-if="userHasRole(['Admin'])">
+                    <v-divider class="my-2"></v-divider>
+                    <v-list-item 
+                        :href="adminUrl" 
+                        target="_blank" 
+                        link
+                    >
+                        <template v-slot:prepend>
+                            <v-icon>mdi-cog</v-icon>
+                        </template>
+                        <v-list-item-title>Panel de Administración</v-list-item-title>
+                    </v-list-item>
+                </template>
+
+                <v-divider class="my-2"></v-divider>
+
+                <v-list-item @click="handleLogout" link>
+                    <template v-slot:prepend>
+                        <v-icon>mdi-logout</v-icon>
+                    </template>
+                    <v-list-item-title>Cerrar Sesión</v-list-item-title>
+                </v-list-item>
             </v-list>
           </v-menu>
         </v-app-bar>
