@@ -49,6 +49,17 @@
                   <span v-else class="text-h6 text-primary">{{ userInitials }}</span>
                 </v-avatar>
               </template>
+              <div v-if="authStore.dteEnvironment" class="mt-2">
+                <v-chip
+                  :color="authStore.dteEnvironment.color"
+                  size="small"
+                  label
+                  variant="tonal"
+                  prepend-icon="mdi-server-network"
+                >
+                  Ambiente: <strong>{{ authStore.dteEnvironment.text }}</strong>
+                </v-chip>
+              </div>
             </v-list-item>
           </v-list>
 
@@ -153,12 +164,12 @@
                     <v-list-item-subtitle class="font-weight-medium">{{ authStore.user.roles[0].name }}</v-list-item-subtitle>
                 </v-list-item>
 
-                <v-list-item v-if="authStore.user?.defaultPuntoDeVenta">
+                <v-list-item v-if="authStore.user?.default_punto_de_venta">
                     <template v-slot:prepend>
                         <v-icon size="small">mdi-point-of-sale</v-icon>
                     </template>
                     <v-list-item-title class="text-caption">Punto de Venta</v-list-item-title>
-                    <v-list-item-subtitle class="font-weight-medium">{{ authStore.user.defaultPuntoDeVenta.nombre }}</v-list-item-subtitle>
+                    <v-list-item-subtitle class="font-weight-medium">{{ authStore.user.default_punto_de_venta.nombre }}</v-list-item-subtitle>
                 </v-list-item>
 
                 <template v-if="userHasRole(['Admin'])">
