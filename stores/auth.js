@@ -119,19 +119,15 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async fetchUser() {
-      if (this.user) {
-        return;
-      }
-      if (this.token) {
-        try {
-          const { $api } = useNuxtApp();
-          const fullUserData = await $api('/api/user'); 
-          this.setUser(fullUserData);
-          console.log("Usuario con permisos cargado en la tienda:", fullUserData);
-        } catch (error) {
-          console.error("Error al recuperar el usuario, token inválido.", error);
-          this.logout();
-        }
+      const { $api } = useNuxtApp();
+      try {
+        const userData = await $api('/api/user');
+        this.user = userData; // Mantenemos la actualización del estado
+        return userData; // <-- ¡AÑADIMOS ESTA LÍNEA CLAVE!
+      } catch (error) {
+        console.error("Error al obtener datos del usuario", error);
+        this.user = null;
+        return null; // <-- También retornamos null en caso de error
       }
     },
 

@@ -656,90 +656,42 @@ const dialog = ref({
 onMounted(async () => {
   initialLoading.value = true;
   try {
-    await authStore.fetchUser();
+    // 1. Obtenemos los datos del usuario y los guardamos en una constante LOCAL.
+    const user = await authStore.fetchUser();
+
+    // 2. Si por alguna razón no obtenemos usuario, detenemos la ejecución.
+    if (!user) {
+      notificationStore.showNotification({ message: 'No se pudieron cargar los datos del usuario.', color: 'error' });
+      return;
+    }
+
+    // 3. AHORA usamos esta constante 'user' local, que GARANTIZADO tiene los datos frescos.
+    //    Esto elimina TODA la duplicación y el código confuso.
+    puntosDeVentaPermitidos.value = user.puntos_de_venta_permitidos || [];
     
+    if (user.default_punto_de_venta) {
+      form.value.punto_de_venta_id = user.default_punto_de_venta.id;
+    } else if (puntosDeVentaPermitidos.value.length > 0) {
+      form.value.punto_de_venta_id = puntosDeVentaPermitidos.value[0].id;
+    }
+
+    // 4. Cargamos el resto de los datos necesarios.
     const { $api } = useNuxtApp();
     const [types, fetchedLocations] = await Promise.all([
       $api('/api/document-types'),
       $api('/api/locations')
     ]);
-    
     documentTypes.value = types;
     locations.value = fetchedLocations;
-
-    setDefaultPuntoDeVenta();
-
-    console.log("Datos de localidades recibidos de la API:", fetchedLocations);
-
-    console.log('Puntos de Venta para el selector:', authStore.user?.puntos_de_venta_permitidos);
-
-    setDefaultPuntoDeVenta();
     
-    // if (fetchedGenericClient && fetchedGenericClient.data.id) {
-    //   genericClient.value = fetchedGenericClient.data;
-    //   form.value.cliente = fetchedGenericClient.data; // Establecemos el cliente por defecto
-    // }
+    // ... Tu lógica para VFP (si aplica) puede ir aquí ...
 
-    // --- LÓGICA PARA LEER PERMISOS DEL USUARIO ---
-    if (authStore.isAuthenticated && authStore.user) {
-        // Poblamos el selector con los POS a los que el usuario tiene acceso
-        puntosDeVentaPermitidos.value = authStore.user.puntos_de_venta_permitidos || [];
-        
-        // Seleccionamos el punto de venta predeterminado del usuario
-        if (authStore.user.default_punto_de_venta) {
-            form.value.punto_de_venta_id = authStore.user.default_punto_de_venta.id;
-        } else if (puntosDeVentaPermitidos.value.length > 0) {
-            // Si no tiene default pero tiene acceso a alguno, seleccionamos el primero de la lista
-            form.value.punto_de_venta_id = puntosDeVentaPermitidos.value[0].id;
-        }
-    }
-
-    // --- LÓGICA PARA CARGAR DATOS DESDE EL SISTEMA DE CRÉDITOS ---
-    const { telefono, nombre, monto, descripcion } = route.query;
-
-    if (telefono && nombre && monto && descripcion) {
-      notificationStore.showNotification({
-        message: 'Datos recibidos desde VFP. Buscando o creando cliente...',
-        color: 'info',
-      });
-
-      // 3. Llamamos a nuestro nuevo endpoint para que el backend haga el trabajo.
-      const clienteResponse = await $api('/api/clients/find-or-create-by-phone', {
-          method: 'POST',
-          body: { 
-              telefono: telefono,
-              nombre: decodeURIComponent(nombre) // Decodificamos el nombre
-          }
-      });
-      
-      // 4. Con el cliente que nos devuelve el backend, poblamos el formulario.
-      if (clienteResponse) {
-        form.value.cliente = clienteResponse.data;
-      }
-      
-      // 5. Pre-llenamos el ítem de la factura con los datos del abono.
-      newItem.value.descripcion = decodeURIComponent(descripcion);
-      newItem.value.precio_unitario = parseFloat(monto);
-      newItem.value.cantidad = 1;
-      newItem.value.tipoItem = 2; // Servicio
-      newItem.value.uniMedida = 99; // Otra
-
-      // Añadimos el ítem a la lista automáticamente.
-      addItem();
-    }
   } catch (err) {
-    notificationStore.showNotification({ message: 'No se pudieron cargar los datos iniciales desde sistema externo.', color: 'error' });
+    notificationStore.showNotification({ message: 'Error al inicializar la página.', color: 'error' });
   } finally {
     initialLoading.value = false;
   }
 });
-
-onActivated(() => {
-  consola.log('Datos de Puntos de Venta recibidos:', authStore.user?.puntos_de_venta_permitidos);
-  setDefaultPuntoDeVenta();
-});
-
-
 // watch(() => form.value.tipo_dte, (newType) => {
 //   // Definimos una lista de los DTEs que no pueden usar un cliente genérico.
 //   const requiresSpecificClient = ['03', '04', '05']; // CCFE, Nota de Remisión, Nota de Crédito
@@ -1286,18 +1238,5 @@ function productSelected(value) {
   }
 }
 
-function setDefaultPuntoDeVenta() {
-  if (authStore.isAuthenticated && authStore.user) {
-    puntosDeVentaPermitidos.value = authStore.user.puntos_de_venta_permitidos || [];
-    
-    // Solo reasignamos si el campo está vacío, para no sobreescribir una selección manual
-    if (!form.value.punto_de_venta_id) {
-        if (authStore.user.default_punto_de_venta) {
-            form.value.punto_de_venta_id = authStore.user.default_punto_de_venta.id;
-        } else if (puntosDeVentaPermitidos.value.length > 0) {
-            form.value.punto_de_venta_id = puntosDeVentaPermitidos.value[0].id;
-        }
-    }
-  }
-}
+
 </script>
