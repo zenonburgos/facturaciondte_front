@@ -321,7 +321,7 @@
               @click="viewJson(item)"
               title="Ver JSON Enviado"
               :loading="item.jsonLoading"
-            ></v-btn>
+          ></v-btn>
 
           <v-btn
             v-if="item.json_enviado?.receptor?.telefono"
@@ -694,11 +694,18 @@ async function viewJson(item) {
   item.jsonLoading = true;
   try {
     const { $api } = useNuxtApp();
-    const invoiceDetails = await $api(`/api/invoices/${item.codigo_generacion}`);
-    if (invoiceDetails && invoiceDetails.json_enviado) {
-      jsonDialog.value.content = JSON.stringify(invoiceDetails.json_enviado, null, 2);
+    
+    // 1. La respuesta de la API ahora ES el JSON combinado que queremos mostrar
+    const responseJson = await $api(`/api/invoices/${item.codigo_generacion}`);
+
+    // 2. Lo asignamos directamente al diálogo
+    if (responseJson) {
+      jsonDialog.value.content = JSON.stringify(responseJson, null, 2);
       jsonDialog.value.show = true;
+    } else {
+      notificationStore.showNotification({ message: 'No se recibió contenido para mostrar.', color: 'warning' });
     }
+
   } catch (error) {
     notificationStore.showNotification({ message: 'No se pudo cargar el JSON del documento.', color: 'error' });
   } finally {
