@@ -425,6 +425,15 @@
         <template v-slot:item.actions="{ item }">
           <v-tooltip location="top">
             <template v-slot:activator="{ props }">
+              <v-btn 
+                icon="mdi-download" 
+                variant="text" 
+                color="primary" 
+                size="small" 
+                @click="downloadPdf(item)" 
+                title="Descargar PDF"
+                :loading="item.pdfLoading" 
+              ></v-btn>
               <v-btn
                 v-bind="props"
                 icon="mdi-dots-vertical"
@@ -447,7 +456,9 @@ import { ref, onMounted } from 'vue';
 import { useAuthStore } from '~/stores/auth';
 import { useNotificationStore } from '~/stores/notifications';
 import { useRoute } from 'vue-router';
+import { useDisplay } from 'vuetify'
 
+const { display } = useDisplay()
 const authStore = useAuthStore();
 const notificationStore = useNotificationStore();
 const route = useRoute();
@@ -701,33 +712,22 @@ async function copyToClipboard(text) {
 }
 
 async function downloadPdf(item) {
-  // 1. Mostramos el estado de carga
   item.pdfLoading = true; 
-
   try {
     const { $api } = useNuxtApp();
-    // 2. Apuntamos a la ruta correcta de la API
     const url = `/api/invoices/${item.codigo_generacion}/pdf`;
-
-    // 3. Le decimos al cliente API que esperamos un archivo binario (blob)
     const pdfBlob = await $api(url, { responseType: 'blob' });
-
-    // 4. Creamos un enlace temporal y forzamos la descarga
     const objectUrl = URL.createObjectURL(pdfBlob);
     const link = document.createElement('a');
     link.href = objectUrl;
     link.download = `dte_${item.numero_control || item.codigo_generacion.slice(0,8)}.pdf`;
     document.body.appendChild(link);
     link.click();
-    
-    // 5. Limpiamos
     document.body.removeChild(link);
     setTimeout(() => URL.revokeObjectURL(objectUrl), 100);
-
   } catch (error) {
     notificationStore.showNotification({ message: 'No se pudo descargar el PDF.', color: 'error' });
   } finally {
-    // 6. Ocultamos el estado de carga
     item.pdfLoading = false; 
   }
 }
