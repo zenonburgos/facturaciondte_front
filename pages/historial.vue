@@ -83,26 +83,80 @@
       </v-card>
     </v-dialog>
     <v-dialog v-model="jsonDialog.show" max-width="900px" scrollable>
-      <v-card>
-        <v-card-title class="d-flex justify-space-between align-center">
-          <span class="text-h5">JSON Enviado a Hacienda</span>
-          <v-btn icon="mdi-close" variant="text" @click="jsonDialog.show = false"></v-btn>
-        </v-card-title>
-        <v-divider></v-divider>
-        <v-card-text>
-          <v-btn
-            prepend-icon="mdi-content-copy"
-            color="primary"
-            variant="tonal"
-            class="mb-4"
-            @click="copyJsonToClipboard"
-            size="small"
-          >
-            Copiar al Portapapeles
-          </v-btn>
-          <pre style="background-color: #2d2d2d; color: #f1f1f1; padding: 1rem; border-radius: 4px; white-space: pre-wrap; word-break: break-all;"><code>{{ jsonDialog.content }}</code></pre>
+  <v-card>
+    <v-card-title class="d-flex justify-space-between align-center">
+      <span class="text-h5">Detalle del DTE</span>
+      <v-btn icon="mdi-close" variant="text" @click="jsonDialog.show = false"></v-btn>
+    </v-card-title>
+    <v-divider></v-divider>
+    <v-card-text>
+      <pre><code>{{ jsonDialog.content }}</code></pre>
         </v-card-text>
-      </v-card>
+
+        <v-divider></v-divider>
+          <v-card-actions class="pa-3">
+            <v-btn
+              color="red-darken-1"
+              prepend-icon="mdi-file-pdf-box"
+              variant="text"
+              @click="downloadPdfFromDialog"  
+              :loading="jsonDialog.item?.pdfLoading"
+              title="Descargar PDF"
+            >
+              PDF
+            </v-btn>
+
+            <v-btn
+              color="blue"
+              prepend-icon="mdi-code-json"
+              variant="text"
+              @click="downloadJson"
+              title="Descargar JSON"
+            >
+              JSON
+            </v-btn>
+
+            <v-spacer></v-spacer>
+
+            <v-btn
+              v-if="jsonDialog.item?.json_enviado?.receptor?.telefono"
+              color="green"
+              prepend-icon="mdi-whatsapp"
+              variant="elevated"
+              @click="shareOnWhatsAppFromDialog"
+              :loading="jsonDialog.item?.whatsAppLoading"
+            >
+              WhatsApp
+            </v-btn>
+
+            <v-tooltip location="top">
+              <template v-slot:activator="{ props }">
+                <div v-bind="props">
+                  <v-btn
+                    color="grey"
+                    prepend-icon="mdi-email"
+                    variant="elevated"
+                    :disabled="true"
+                  >
+                    Correo
+                  </v-btn>
+                </div>
+              </template>
+              <span>Función no disponible actualmente</span>
+            </v-tooltip>
+
+            <v-btn
+              v-if="jsonDialog.item?.estado === 'PROCESADO'"
+              color="error"
+              prepend-icon="mdi-cancel"
+              variant="elevated"
+              class="ml-2"
+              @click="invalidateFromDialog"
+            >
+              Invalidar
+            </v-btn>
+          </v-card-actions>
+        </v-card>
     </v-dialog>
     <v-card>
       <v-card-title>Filtros de Búsqueda</v-card-title>
@@ -302,7 +356,7 @@
           {{ formatDateTime(item.fh_procesamiento) }}
         </template>
 
-        <template v-slot:item.actions="{ item }">
+        <!-- <template v-slot:item.actions="{ item }">
           <v-btn 
             icon="mdi-download" 
             variant="text" 
@@ -343,6 +397,21 @@
             @click.stop="openInvalidateDialog(item)"  
             title="Invalidar Documento"
           ></v-btn>
+        </template> -->
+        <template v-slot:item.actions="{ item }">
+          <v-tooltip location="top">
+            <template v-slot:activator="{ props }">
+              <v-btn
+                v-bind="props"
+                icon="mdi-dots-vertical"
+                variant="text"
+                size="small"
+                @click="viewJson(item)"
+                :loading="item.jsonLoading"
+              ></v-btn>
+            </template>
+            <span>Acciones</span>
+          </v-tooltip>
         </template>
       </v-data-table-server>
     </v-card>
@@ -406,7 +475,7 @@ const loadingMessage = ref('');
 const documentTypes = ref([]);
 const exportLoading = ref(false);
 const invalidateDialog = ref({ show: false, dte: null, motivo: '', loading: false });
-const jsonDialog = ref({ show: false, content: '' });
+const jsonDialog = ref({ show: false, content: '', data: null, item: null });
 
 const headers = [
   { title: 'Tipo', key: 'tipo_dte', sortable: false },
@@ -613,6 +682,7 @@ async function downloadPdf(item) {
     const { $api } = useNuxtApp();
     const url = `/api/invoices/${item.codigo_generacion}/pdf`;
     const pdfBlob = await $api(url, { responseType: 'blob' });
+
     const objectUrl = URL.createObjectURL(pdfBlob);
     const link = document.createElement('a');
     link.href = objectUrl;
@@ -621,6 +691,7 @@ async function downloadPdf(item) {
     link.click();
     document.body.removeChild(link);
     setTimeout(() => URL.revokeObjectURL(objectUrl), 100);
+
   } catch (error) {
     notificationStore.showNotification({ message: 'No se pudo descargar el PDF.', color: 'error' });
   } finally {
@@ -692,15 +763,14 @@ function formatDateTime(dateTimeString) {
 
 async function viewJson(item) {
   item.jsonLoading = true;
+  jsonDialog.value.item = item;
   try {
     const { $api } = useNuxtApp();
-    
-    // 1. La respuesta de la API ahora ES el JSON combinado que queremos mostrar
     const responseJson = await $api(`/api/invoices/${item.codigo_generacion}`);
 
-    // 2. Lo asignamos directamente al diálogo
     if (responseJson) {
       jsonDialog.value.content = JSON.stringify(responseJson, null, 2);
+      jsonDialog.value.data = responseJson; // <-- ¡Línea clave! Guardamos el objeto
       jsonDialog.value.show = true;
     } else {
       notificationStore.showNotification({ message: 'No se recibió contenido para mostrar.', color: 'warning' });
@@ -713,6 +783,23 @@ async function viewJson(item) {
   }
 }
 
+function downloadJson() {
+  if (!jsonDialog.value.content) return;
+
+  const blob = new Blob([jsonDialog.value.content], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  
+  a.href = url;
+  a.download = generatedFilename.value; // Usamos la propiedad computada
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+
+
 async function copyJsonToClipboard() {
   if (!jsonDialog.value.content) return;
   try {
@@ -723,21 +810,30 @@ async function copyJsonToClipboard() {
   }
 }
 
-async function shareOnWhatsApp(item) {
-  item.whatsAppLoading = true;
+async function shareOnWhatsApp() {
+  if (!jsonDialog.value.data) return;
+
+  const codigoGeneracion = jsonDialog.value.data.identificacion.codigoGeneracion;
+  
   try {
+    // 1. Pedimos la URL completa y correcta al backend
     const { $api } = useNuxtApp();
-    const response = await $api(`/api/invoices/${item.codigo_generacion}/shareable-link`);
-    const pdfUrl = response.url;
-    let phone = item.json_enviado.receptor.telefono.replace(/[^0-9]/g, '');
-    if (phone.length === 8) phone = `503${phone}`;
-    const message = encodeURIComponent(`¡Hola! Aquí está su Documento Tributario Electrónico No. ${item.numero_control}.\n\nPuede descargarlo desde el siguiente enlace:\n${pdfUrl}`);
-    const whatsappUrl = `https://wa.me/${phone}?text=${message}`;
+    const response = await $api(`/api/invoices/${codigoGeneracion}/public-link`);
+    const shareableLink = response.url;
+
+    // 2. Construimos el mensaje con la URL recibida
+    let message = `Hola ${jsonDialog.value.data.receptor.nombre},\n`;
+    message += `Te compartimos tu DTE de ${jsonDialog.value.data.emisor.nombreComercial}.\n\n`;
+    message += `Puedes verlo y descargarlo aquí:\n${shareableLink}`;
+    
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    
     window.open(whatsappUrl, '_blank');
+
   } catch (error) {
-    notificationStore.showNotification({ message: 'No se pudo generar el enlace para compartir.', color: 'error' });
-  } finally {
-    item.whatsAppLoading = false;
+    // Aquí puedes usar tu 'notificationStore' para mostrar un error
+    console.error("No se pudo obtener el enlace para compartir:", error);
+    // notificationStore.showNotification({ message: 'No se pudo generar el enlace.', color: 'error' });
   }
 }
 
@@ -794,6 +890,47 @@ function getRowProps({ item }) {
     return { class: 'invalid-row' };
   }
   return {};
+}
+
+const generatedFilename = computed(() => {
+  if (!jsonDialog.value.data) {
+    return 'dte.json';
+  }
+
+  try {
+    const emisor = jsonDialog.value.data.emisor.nombre.split(',')[0].trim().replace(/\s+/g, '-');
+    const receptor = jsonDialog.value.data.receptor.nombre.split(',')[0].trim().replace(/\s+/g, '-');
+    const fecha = new Date(jsonDialog.value.data.identificacion.fecEmi + 'T00:00:00');
+    const anio = fecha.getFullYear();
+    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+
+    return `${emisor}_${receptor}_${anio}_${mes}.json`;
+  } catch (e) {
+    console.error("Error generando el nombre del archivo:", e);
+    return `DTE_${jsonDialog.value.data.identificacion.codigoGeneracion.substring(0, 8)}.json`;
+  }
+});
+
+function downloadPdfFromDialog() {
+  const item = jsonDialog.value.item; // 1. Obtiene la factura guardada
+  if (item) {
+    downloadPdf(item); // 2. Llama a tu función original con esa factura
+  }
+}
+
+function shareOnWhatsAppFromDialog() {
+  const item = jsonDialog.value.item;
+  if (item) {
+    shareOnWhatsApp(item); // O adaptas la lógica para usar el item del diálogo
+  }
+}
+
+function invalidateFromDialog() {
+  const item = jsonDialog.value.item;
+  if (item) {
+    openInvalidateDialog(item);
+    jsonDialog.value.show = false; // Cerramos el diálogo para abrir el de invalidar
+  }
 }
 </script>
 
