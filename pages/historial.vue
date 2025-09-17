@@ -918,10 +918,51 @@ function downloadPdfFromDialog() {
   }
 }
 
-function shareOnWhatsAppFromDialog() {
+async function shareOnWhatsAppFromDialog() {
   const item = jsonDialog.value.item;
-  if (item) {
-    shareOnWhatsApp(item); // O adaptas la lógica para usar el item del diálogo
+  if (!item) return;
+
+  // Obtenemos los datos necesarios del diálogo
+  const dteData = jsonDialog.value.data;
+  if (!dteData) return;
+  
+  // 1. Obtenemos el número de teléfono del receptor
+  let telefono = dteData.receptor?.telefono;
+
+  if (!telefono) {
+    notificationStore.showNotification({ message: 'Este cliente no tiene un número de teléfono registrado.', color: 'warning' });
+    return;
+  }
+
+  // 2. Limpiamos el número: quitamos guiones, espacios, paréntesis, etc.
+  let telefonoLimpio = telefono.replace(/[\s-()]/g, '');
+
+  // 3. (IMPORTANTE) Nos aseguramos de que tenga el código de país (503 para El Salvador)
+  // Si el número tiene 8 dígitos, asumimos que es local y le agregamos el 503.
+  if (telefonoLimpio.length === 8) {
+    telefonoLimpio = '503' + telefonoLimpio;
+  }
+  
+  // Inicia la carga justo antes de pedir el link
+  item.whatsAppLoading = true;
+  try {
+    const { $api } = useNuxtApp();
+    const response = await $api(`/api/invoices/${dteData.identificacion.codigoGeneracion}/public-link`);
+    const shareableLink = response.url;
+
+    let message = `Hola ${dteData.receptor.nombre},\n`;
+    message += `Te compartimos tu DTE de ${dteData.emisor.nombreComercial}.\n\n`;
+    message += `Puedes verlo y descargarlo aquí:\n${shareableLink}`;
+    
+    // 4. Construimos la URL final CON el número de teléfono
+    const whatsappUrl = `https://wa.me/${telefonoLimpio}?text=${encodeURIComponent(message)}`;
+    
+    window.open(whatsappUrl, '_blank');
+
+  } catch (error) {
+    notificationStore.showNotification({ message: 'No se pudo obtener el enlace para compartir.', color: 'error' });
+  } finally {
+    item.whatsAppLoading = false;
   }
 }
 
