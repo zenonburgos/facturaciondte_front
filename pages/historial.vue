@@ -82,83 +82,107 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-    <v-dialog v-model="jsonDialog.show" max-width="900px" scrollable>
-  <v-card>
-    <v-card-title class="d-flex justify-space-between align-center">
-      <span class="text-h5">Detalle del DTE</span>
-      <v-btn icon="mdi-close" variant="text" @click="jsonDialog.show = false"></v-btn>
-    </v-card-title>
-    <v-divider></v-divider>
-    <v-card-text>
-      <pre><code>{{ jsonDialog.content }}</code></pre>
-        </v-card-text>
+    <v-dialog 
+        v-model="jsonDialog.show" 
+        max-width="900px" 
+        scrollable
+        :fullscreen="$vuetify.display.xs"
+        transition="dialog-bottom-transition"
+      >
+      <v-card>
+      <v-card-title class="d-flex justify-space-between align-center">
+        <span class="text-h5">Detalle del DTE</span>
+        <v-btn icon="mdi-close" variant="text" @click="jsonDialog.show = false"></v-btn>
+      </v-card-title>
+      
+      <v-divider></v-divider>
 
-        <v-divider></v-divider>
-          <v-card-actions class="pa-3">
+      <v-card-text>
+        <pre style="white-space: pre-wrap; word-break: break-all;"><code>{{ jsonDialog.content }}</code></pre>
+      </v-card-text>
+
+      <v-divider></v-divider>
+      
+      <v-card-actions class="pa-3 flex-wrap justify-end">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
             <v-btn
+              v-bind="props"
               color="red-darken-1"
-              prepend-icon="mdi-file-pdf-box"
+              :icon="$vuetify.display.xs"
               variant="text"
-              @click="downloadPdfFromDialog"  
+              @click="downloadPdfFromDialog"
               :loading="jsonDialog.item?.pdfLoading"
-              title="Descargar PDF"
             >
-              PDF
+              <v-icon start>mdi-file-pdf-box</v-icon>
+              <span class="d-none d-sm-inline">PDF</span>
             </v-btn>
+          </template>
+          <span>Descargar PDF</span>
+        </v-tooltip>
 
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
             <v-btn
+              v-bind="props"
               color="blue"
-              prepend-icon="mdi-code-json"
+              :icon="$vuetify.display.xs"
               variant="text"
               @click="downloadJson"
-              title="Descargar JSON"
             >
-              JSON
+              <v-icon start>mdi-code-json</v-icon>
+              <span class="d-none d-sm-inline">JSON</span>
             </v-btn>
-
-            <v-spacer></v-spacer>
-
-            <v-btn
-              v-if="jsonDialog.item?.json_enviado?.receptor?.telefono"
-              color="green"
-              prepend-icon="mdi-whatsapp"
-              variant="elevated"
-              @click="shareOnWhatsAppFromDialog"
-              :loading="jsonDialog.item?.whatsAppLoading"
-            >
-              WhatsApp
-            </v-btn>
-
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <div v-bind="props">
-                  <v-btn
-                    color="grey"
-                    prepend-icon="mdi-email"
-                    variant="elevated"
-                    :disabled="true"
-                  >
-                    Correo
-                  </v-btn>
-                </div>
-              </template>
-              <span>Función no disponible actualmente</span>
-            </v-tooltip>
-
-            <v-btn
-              v-if="jsonDialog.item?.estado === 'PROCESADO'"
-              color="error"
-              prepend-icon="mdi-cancel"
-              variant="elevated"
-              class="ml-2"
-              @click="invalidateFromDialog"
-            >
-              Invalidar
-            </v-btn>
-          </v-card-actions>
-        </v-card>
+          </template>
+          <span>Descargar JSON</span>
+        </v-tooltip>
+        
+        <v-btn
+          v-if="jsonDialog.item?.json_enviado?.receptor?.telefono"
+          color="green"
+          :icon="$vuetify.display.xs"
+          variant="elevated"
+          class="ml-2"
+          @click="shareOnWhatsAppFromDialog"
+          :loading="jsonDialog.item?.whatsAppLoading"
+        >
+          <v-icon start>mdi-whatsapp</v-icon>
+          <span class="d-none d-sm-inline">WhatsApp</span>
+        </v-btn>
+        
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props">
+              <v-btn
+                color="grey"
+                :icon="$vuetify.display.xs"
+                variant="elevated"
+                class="ml-2"
+                :disabled="true"
+              >
+                <v-icon start>mdi-email</v-icon>
+                <span class="d-none d-sm-inline">Correo</span>
+              </v-btn>
+            </div>
+          </template>
+          <span>Función no disponible</span>
+        </v-tooltip>
+        
+        <v-btn
+          v-if="jsonDialog.item?.estado === 'PROCESADO'"
+          color="error"
+          :icon="$vuetify.display.xs"
+          variant="elevated"
+          class="ml-2"
+          @click="invalidateFromDialog"
+        >
+          <v-icon start>mdi-cancel</v-icon>
+          <span class="d-none d-sm-inline">Invalidar</span>
+        </v-btn>
+      </v-card-actions>
+    </v-card>
     </v-dialog>
-    <v-card>
+      <v-card>
       <v-card-title>Filtros de Búsqueda</v-card-title>
 
       <v-card-text>
@@ -677,24 +701,33 @@ async function copyToClipboard(text) {
 }
 
 async function downloadPdf(item) {
+  // 1. Mostramos el estado de carga
   item.pdfLoading = true; 
+
   try {
     const { $api } = useNuxtApp();
+    // 2. Apuntamos a la ruta correcta de la API
     const url = `/api/invoices/${item.codigo_generacion}/pdf`;
+
+    // 3. Le decimos al cliente API que esperamos un archivo binario (blob)
     const pdfBlob = await $api(url, { responseType: 'blob' });
 
+    // 4. Creamos un enlace temporal y forzamos la descarga
     const objectUrl = URL.createObjectURL(pdfBlob);
     const link = document.createElement('a');
     link.href = objectUrl;
     link.download = `dte_${item.numero_control || item.codigo_generacion.slice(0,8)}.pdf`;
     document.body.appendChild(link);
     link.click();
+    
+    // 5. Limpiamos
     document.body.removeChild(link);
     setTimeout(() => URL.revokeObjectURL(objectUrl), 100);
 
   } catch (error) {
     notificationStore.showNotification({ message: 'No se pudo descargar el PDF.', color: 'error' });
   } finally {
+    // 6. Ocultamos el estado de carga
     item.pdfLoading = false; 
   }
 }
@@ -912,9 +945,9 @@ const generatedFilename = computed(() => {
 });
 
 function downloadPdfFromDialog() {
-  const item = jsonDialog.value.item; // 1. Obtiene la factura guardada
+  const item = jsonDialog.value.item;
   if (item) {
-    downloadPdf(item); // 2. Llama a tu función original con esa factura
+    downloadPdf(item); // Correcto, llama a la función que maneja el blob.
   }
 }
 
