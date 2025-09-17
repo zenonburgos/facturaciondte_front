@@ -154,18 +154,19 @@
           <template v-slot:activator="{ props }">
             <div v-bind="props">
               <v-btn
-                color="grey"
+                v-if="jsonDialog.data?.receptor?.correo"
+                :href="mailtoLink"
+                color="primary"
                 :icon="$vuetify.display.xs"
                 variant="elevated"
                 class="ml-2"
-                :disabled="true"
               >
                 <v-icon start>mdi-email</v-icon>
                 <span class="d-none d-sm-inline">Correo</span>
               </v-btn>
             </div>
           </template>
-          <span>Función no disponible</span>
+          <span>Enviar por correo</span>
         </v-tooltip>
         
         <v-btn
@@ -1006,6 +1007,28 @@ function invalidateFromDialog() {
     jsonDialog.value.show = false; // Cerramos el diálogo para abrir el de invalidar
   }
 }
+
+const mailtoLink = computed(() => {
+  if (!jsonDialog.value.data?.receptor?.correo) {
+    return undefined; // Devuelve undefined si no hay correo
+  }
+  
+  const dte = jsonDialog.value.data;
+  const to = dte.receptor.correo;
+  const subject = `DTE: ${dte.identificacion.numeroControl} (${dte.emisor.nombreComercial})`;
+
+  // Usamos la URL pública que ya funciona para WhatsApp
+  const shareableLink = `${window.location.origin}/dte/compartir/${dte.identificacion.codigoGeneracion}`;
+  
+  // Cuerpo del correo minimalista
+  const body = `Hola ${dte.receptor.nombre},
+
+Su documento tributario está disponible en el siguiente enlace:
+${shareableLink}
+  `;
+
+  return `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+});
 </script>
 
 <style>
