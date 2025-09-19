@@ -32,11 +32,11 @@
             <v-col cols="12" md="6">
               <v-text-field 
                 v-model="form.empresa_nit" 
-                label="NIT / DUI homologado " 
+                label="NIT" 
                 :rules="[rules.required, rules.nit]" 
                 variant="outlined" 
                 density="compact"
-                hint="Escribe 9 dígitos para DUI homologado o 14 dígitos para NIT, sin guiones."
+                hint="Escribe 14 dígitos para NIT, sin guiones."
                 persistent-hint
               ></v-text-field>
             </v-col>
@@ -306,7 +306,7 @@ const rules = {
   username: value => /^[a-zA-Z0-9_-]+$/.test(value) || 'Formato no válido. Solo letras, números, guiones y guiones bajos.',
   
   // NUEVA: Regla para NIT (14 dígitos)
-  nit: value => /^[0-9]{9}$/.test(value) || 'El NIT o DUI debe consistir en 9 dígitos como mínimo.',
+  nit: value => /^[0-9]{14}$/.test(value) || 'El NIT debe consistir en 14 dígitos.',
 
   // NUEVA: Regla para NRC
   nrc: value => /^[0-9]+(-[0-9])?$/.test(value) || 'El NRC tiene un formato inválido.',
