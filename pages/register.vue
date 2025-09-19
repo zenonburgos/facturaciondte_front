@@ -282,9 +282,19 @@ watch(() => form.value.empresa_correo, (newEmail) => {
 
 watch(() => form.value.user_email, (newEmail) => {
   if (newEmail && !isUsernameManuallyEdited.value) {
-    // Tomamos la parte antes del @
-    form.value.user_username = newEmail.split('@')[0];
-  }
+    // PASO 1: Extraes la parte antes del @ y la guardas en una variable temporal.
+    // Si el email es "juan.perez@mail.com", usernameBase será "juan.perez".
+    const usernameBase = newEmail.split('@')[0];
+
+    // PASO 2: Tomas esa variable y le aplicas la limpieza.
+    // Usamos .replace(/\./g, '') para buscar todos los puntos (.) y reemplazarlos
+    // con nada ('').
+    // Ahora, cleanedUsername será "juanperez".
+    const cleanedUsername = usernameBase.replace(/\./g, '_');
+
+    // PASO 3: Asignas el resultado ya limpio al campo del formulario.
+    form.value.user_username = cleanedUsername;
+}
 });
 
 
