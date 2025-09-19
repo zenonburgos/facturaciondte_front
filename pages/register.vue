@@ -312,7 +312,7 @@ const rules = {
   nrc: value => /^[0-9]+(-[0-9])?$/.test(value) || 'El NRC tiene un formato inválido.',
   
   // NUEVA: Regla para Teléfono de El Salvador
-  phone: value => /^[67][0-9]{7}$/.test(value) || 'Debe ser un teléfono válido de 8 dígitos (iniciar con 6 o 7).',
+  phone: value => /^[0-9]{7,10}$/.test(value) || 'Debe ser un número de teléfono válido (7 a 10 dígitos).',
 
   certificateFile: value => {
     // Si no hay archivo (el valor es null o undefined), la validación pasa.
