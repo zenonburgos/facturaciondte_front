@@ -32,11 +32,11 @@
             <v-col cols="12" md="6">
               <v-text-field 
                 v-model="form.empresa_nit" 
-                label="NIT" 
+                label="NIT / DUI homologado " 
                 :rules="[rules.required, rules.nit]" 
                 variant="outlined" 
                 density="compact"
-                hint="Escribe los 14 dígitos sin guiones."
+                hint="Escribe 9 dígitos para DUI homologado o 14 dígitos para NIT, sin guiones."
                 persistent-hint
               ></v-text-field>
             </v-col>
@@ -139,13 +139,13 @@
           
           <v-divider class="my-6"></v-divider>
 
-          <p class="text-h6 mb-4">3. Credenciales de Hacienda</p>
+          <p class="text-h6 mb-4">3. Credenciales de Hacienda (Con base a lo que generó en plataforma de <a href="https://factura.gob.sv" target="_blank" rel="noopener noreferrer">factura.gob.sv</a>)</p>
           <v-row>
             <v-col cols="12" md="6">
-              <v-text-field v-model="form.mh_password_api" label="Contraseña API de Hacienda" type="password" variant="outlined" density="compact"></v-text-field>
+              <v-text-field v-model="form.mh_password_api" label="Clave acceso API Hacienda" type="password" variant="outlined" density="compact"></v-text-field>
             </v-col>
             <v-col cols="12" md="6">
-              <v-text-field v-model="form.mh_password_certificado" label="Contraseña del Certificado (.p12)" type="password" variant="outlined" density="compact"></v-text-field>
+              <v-text-field v-model="form.mh_password_certificado" label="Clave privada del Certificado (.p12)" type="password" variant="outlined" density="compact"></v-text-field>
             </v-col>
           </v-row>
           <v-row>
@@ -154,19 +154,18 @@
                 v-model="form.certificado_file"
                 label="Certificado de Firma (.crt)"
                 accept=".crt"
-                :rules="[rules.required, rules.certificateName]"
-                variant="outlined"
+                :rules="[rules.certificateFile]" variant="outlined"
                 density="compact"
-                hint="El nombre del archivo debe ser su NIT. Ejemplo: 01010101010101.crt"
+                hint="Seleccione el archivo .crt proporcionado por la entidad certificadora."
                 persistent-hint
               ></v-file-input>
             </v-col>
-            <v-col cols="12" md="6">
+            <!-- <v-col cols="12" md="6">
               <v-text-field v-model="form.mh_password_api" label="Contraseña API de Hacienda" type="password" variant="outlined" density="compact"></v-text-field>
             </v-col>
             <v-col cols="12" md="6">
               <v-text-field v-model="form.mh_password_certificado" label="Contraseña del Certificado (.p12)" type="password" variant="outlined" density="compact"></v-text-field>
-            </v-col>
+            </v-col> -->
           </v-row>
           <v-alert v-if="error" type="error" dense class="my-4" variant="tonal">
             <template v-slot:title>
@@ -291,7 +290,7 @@ watch(() => form.value.user_email, (newEmail) => {
 
 // --- Lógica de Validación y Envío ---
 const rules = {
-  required: value => !!value || 'Este campo es requerido.',
+  required: value => (value && value.length !== 0) || 'Este campo es requerido.',
   email: value => /.+@.+\..+/.test(value) || 'Debe ser un correo electrónico válido.',
   
   // NUEVA: Regla de contraseña más estricta
@@ -307,7 +306,7 @@ const rules = {
   username: value => /^[a-zA-Z0-9_-]+$/.test(value) || 'Formato no válido. Solo letras, números, guiones y guiones bajos.',
   
   // NUEVA: Regla para NIT (14 dígitos)
-  nit: value => /^[0-9]{14}$/.test(value) || 'El NIT debe consistir en 14 dígitos numéricos.',
+  nit: value => /^[0-9]{9}$/.test(value) || 'El NIT o DUI debe consistir en 9 dígitos como mínimo.',
 
   // NUEVA: Regla para NRC
   nrc: value => /^[0-9]+(-[0-9])?$/.test(value) || 'El NRC tiene un formato inválido.',
@@ -315,22 +314,34 @@ const rules = {
   // NUEVA: Regla para Teléfono de El Salvador
   phone: value => /^[67][0-9]{7}$/.test(value) || 'Debe ser un teléfono válido de 8 dígitos (iniciar con 6 o 7).',
 
-  certificateName: value => {
-    if (!value || value.length === 0) return true; // No validar si está vacío, para eso está 'required'
-    const fileName = value[0].name;
-    const expectedName = `${form.value.empresa_nit}.crt`;
-    return fileName === expectedName || `El nombre del archivo debe ser exactamente '${expectedName}'.`;
+  certificateFile: value => {
+    // Si no hay archivo (el valor es null o undefined), la validación pasa.
+    // Esto hace que el campo sea opcional.
+    if (!value) return true;
+
+    // 'value' ahora es el objeto File directamente, no un array.
+    // Ya no necesitamos la línea 'const file = value[0];'
+    const fileName = value.name;
+
+    // La validación de la extensión se mantiene igual.
+    if (!fileName.toLowerCase().endsWith('.crt')) {
+      return 'El archivo debe ser de tipo .crt';
+    }
+
+    return true;
   }
 };
 
 async function handleRegister() {
+  console.log('1. Iniciando handleRegister...'); // <-- LOG 1
   error.value = null;
   const { valid } = await formRef.value.validate();
+  console.log('2. Resultado de la validación:', valid); // <-- LOG 2
   if (!valid) {
     notificationStore.showNotification({ message: 'Por favor, revisa los campos del formulario.', color: 'warning' });
     return;
   }
-  
+  console.log('3. La validación pasó. Creando FormData...'); // <-- LOG 3
   loading.value = true;
 
   // Usa FormData para enviar archivos y texto juntos
@@ -353,8 +364,8 @@ async function handleRegister() {
     formData.append('logo_file', form.value.logo_file[0]);
   }
 
-  if (form.value.certificado_file && form.value.certificado_file.length > 0) {
-    formData.append('certificado_file', form.value.certificado_file[0]);
+  if (form.value.certificado_file) {
+    formData.append('certificado_file', form.value.certificado_file);
   }
 
   try {
