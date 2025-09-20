@@ -7,38 +7,50 @@
 
             <v-col cols="12" md="6" class="bg-primary d-flex flex-column justify-center align-center pa-8">
               <div class="text-center" style="max-width: 500px;">
-                <h1 class="text-h4 text-md-h4 font-weight-bold text-white mb-6">
-                  La plataforma para tu Facturación Electrónica
+                <v-img 
+                  v-if="settings.login_logo_path" 
+                  :src="settings.login_logo_path" 
+                  max-height="120" 
+                  class="mb-6"
+                ></v-img>
+                <h1 class="text-h4 text-md-h4 ...">
+                  {{ settings.slogan || 'La plataforma para tu Facturación Electrónica' }}
                 </h1>
                 
                 <p class="text-body-1 font-weight-light text-white op-80 mb-8">
                   {{ $config.public.loginMessage }}
                 </p>
 
-                <v-list bg-color="transparent" class="text-left">
-                  <v-list-item class="text-white op-80">
-                    <template v-slot:prepend><v-icon color="white">mdi-check-circle-outline</v-icon></template>
-                    <v-list-item-title>Emite DTEs ilimitados.</v-list-item-title>
-                  </v-list-item>
-                  <v-list-item class="text-white op-80">
-                    <template v-slot:prepend><v-icon color="white">mdi-check-circle-outline</v-icon></template>
-                    <v-list-item-title>Consulta tu historial en cualquier momento.</v-list-item-title>
-                  </v-list-item>
-                  <v-list-item class="text-white op-80">
-                    <template v-slot:prepend><v-icon color="white">mdi-check-circle-outline</v-icon></template>
-                    <v-list-item-title>Seguridad y respaldo garantizado.</v-list-item-title>
+                <v-list 
+                  v-if="settings.login_features && settings.login_features.length > 0" 
+                  bg-color="transparent" 
+                  class="text-left"
+                >
+                  <v-list-item 
+                    v-for="(feature, i) in settings.login_features" 
+                    :key="i" 
+                    class="text-white op-80"
+                  >
+                    <template v-slot:prepend>
+                      <v-icon color="white">{{ feature.icon }}</v-icon>
+                    </template>
+
+                    <v-list-item-title>{{ feature.text }}</v-list-item-title>
                   </v-list-item>
                 </v-list>
                 <v-divider class="border-opacity-50 mb-8"></v-divider>
 
                 <p class="text-white op-80 text-caption mb-2">¿Tienes preguntas?</p>
                 <v-btn
+                  v-if="settings.contact_phone"
                   variant="text"
                   color="white"
-                  href="https://wa.me/50377429495" target="_blank"
+                  :href="`https://wa.me/${settings.contact_phone.replace(/\D/g, '')}`" 
+                  target="_blank"
                   prepend-icon="mdi-whatsapp"
                 >
-                  +503 7742-9495 </v-btn>
+                  {{ settings.contact_phone }}
+                </v-btn>
               </div>
             </v-col>
 
@@ -111,7 +123,8 @@
 import { ref } from 'vue';
 import { useAuthStore } from '~/stores/auth';
 import { useRouter, useRoute } from 'vue-router';
-import RegisterButton from '~/components/RegisterButton.vue'; // Importamos el nuevo botón
+import RegisterButton from '~/components/RegisterButton.vue';
+import { usePlatformSettings } from '~/composables/usePlatformSettings';
 
 definePageMeta({
   layout: 'login',
@@ -119,7 +132,7 @@ definePageMeta({
 
 // URL del logo que te generé. Súbelo a tu carpeta `public` del frontend.
 const logoUrl = '/sv-dte-logo.png'; 
-
+const settings = usePlatformSettings();
 const authStore = useAuthStore();
 const router = useRouter();
 const route = useRoute();
