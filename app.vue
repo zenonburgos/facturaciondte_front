@@ -1,63 +1,58 @@
 <template>
-  <v-app>
-    <v-main>
-      <NuxtLayout>
-        <NuxtPage />
-      </NuxtLayout>
-    </v-main>
-  </v-app>
+  <NuxtLayout>
+    <NuxtPage />
+  </NuxtLayout>
 </template>
 
 <script setup>
 import { onMounted } from 'vue';
 import { useAuthStore } from '~/stores/auth';
+import { usePlatformSettings } from '~/composables/usePlatformSettings';
+import { useNuxtApp, useRuntimeConfig } from '#app';
 
 const authStore = useAuthStore();
-const { $api } = useNuxtApp();
+const { $api, $vuetify } = useNuxtApp();
 const settings = usePlatformSettings();
 
-// onMounted se ejecuta una sola vez cuando la aplicación se carga en el cliente.
+// 1. Obtenemos la configuración del runtime
+const config = useRuntimeConfig();
+// 2. Construimos la URL completa y correcta para la API
+const apiUrl = `${config.public.apiBaseUrl}/api/platform-settings`;
+
+// 3. Usamos la URL correcta en el useFetch
+const { data, error } = await useFetch(apiUrl, { 
+  server: false,
+  lazy: true,
+});
+
 onMounted(async () => {
-  // Si el store dice que estamos autenticados (porque encontró un token en la cookie)
-  // PERO no tenemos los datos del objeto 'user'...
   if (authStore.isAuthenticated && !authStore.user) {
     try {
-      // ...hacemos una llamada al endpoint /api/user para obtenerlos.
       const user = await $api('/api/user');
-      // Guardamos los datos recibidos en el store.
       authStore.setUser(user);
     } catch (error) {
-      // Si la llamada falla (ej. token inválido), cerramos la sesión.
       console.error("No se pudo rehidratar el usuario, cerrando sesión.", error);
       authStore.logout();
     }
   }
 });
 
-const hexToRgb = (hex) => {
-  if (!hex) return '30, 136, 229'; // Color primario por defecto (azul)
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result
-    ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`
-    : '30, 136, 229'; // Fallback
-};
+watch(data, (newSettings) => {
+  if (newSettings && $vuetify.theme.global.current.colors) {
+    settings.value = newSettings;
 
-const cssVars = computed(() => {
-  if (!settings.value) return '';
-  const primaryRgb = hexToRgb(settings.value.color_primary);
-  const secondaryRgb = hexToRgb(settings.value.color_secondary);
-  return `
-    :root {
-      --v-theme-primary: ${primaryRgb};
-      --v-theme-secondary: ${secondaryRgb};
+    if (newSettings.color_primary) {
+      $vuetify.theme.global.current.colors.primary = newSettings.color_primary;
     }
-  `;
-});
+    if (newSettings.color_secondary) {
+      $vuetify.theme.global.current.colors.secondary = newSettings.color_secondary;
+    }
+  }
+}, { immediate: true });
 
-useHead({
-  style: [{
-    children: cssVars,
-    type: 'text/css'
-  }]
+watch(error, (newError) => {
+  if (newError) {
+    console.error('Error al cargar la configuración de la plataforma:', newError);
+  }
 });
 </script>

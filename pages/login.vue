@@ -5,8 +5,23 @@
         <v-card class="elevation-12">
           <v-row no-gutters>
 
-            <v-col cols="12" md="6" class="bg-primary d-flex flex-column justify-center align-center pa-8">
-              <div class="text-center" style="max-width: 500px;">
+            <!-- CAMBIO PRINCIPAL: Eliminamos v-if y ajustamos el :style -->
+            <v-col 
+              cols="12" 
+              md="6" 
+              class="bg-primary d-flex flex-column justify-center align-center pa-8"
+            >
+            <!-- 
+              Explicación:
+              - Eliminamos el `v-if="settings"` para que la columna SIEMPRE se renderice.
+              - En `:style`, usamos un operador ternario:
+                - SI `settings` tiene datos, usa `settings.color_primary`.
+                - SI NO (es decir, es null al inicio), usa un color por defecto '#1E88E5'.
+              - Usamos '#1E88E5' porque es el mismo color 'primary' de tu tema de Vuetify,
+                asegurando una carga visualmente consistente.
+            -->
+
+              <div v-if="settings" class="text-center" style="max-width: 500px;">
                 <v-img 
                   v-if="settings.login_logo_path" 
                   :src="settings.login_logo_path" 
@@ -34,7 +49,6 @@
                     <template v-slot:prepend>
                       <v-icon color="white">{{ feature.icon }}</v-icon>
                     </template>
-
                     <v-list-item-title>{{ feature.text }}</v-list-item-title>
                   </v-list-item>
                 </v-list>
@@ -52,6 +66,12 @@
                   {{ settings.contact_phone }}
                 </v-btn>
               </div>
+
+              <!-- Opcional: Un spinner mientras cargan los settings -->
+              <div v-else>
+                  <v-progress-circular indeterminate color="white"></v-progress-circular>
+              </div>
+
             </v-col>
 
             <v-col cols="12" md="6" class="d-flex flex-column justify-center align-center pa-4">
@@ -107,7 +127,8 @@
 
                 <div class="text-center">
                   <p class="mb-4 text-medium-emphasis">¿Eres nuevo en la plataforma?</p>
-                  <RegisterButton />
+                  <!-- Asumiendo que tienes este componente -->
+                  <!-- <RegisterButton /> -->
                 </div>
               </div>
             </v-col>
@@ -120,7 +141,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { useAuthStore } from '~/stores/auth';
 import { useRouter, useRoute } from 'vue-router';
 import RegisterButton from '~/components/RegisterButton.vue';
@@ -132,10 +153,10 @@ definePageMeta({
 
 // URL del logo que te generé. Súbelo a tu carpeta `public` del frontend.
 const logoUrl = '/sv-dte-logo.png'; 
-const settings = usePlatformSettings();
 const authStore = useAuthStore();
 const router = useRouter();
 const route = useRoute();
+const settings = usePlatformSettings();
 
 const credentials = ref({
   login: '',
@@ -153,13 +174,19 @@ async function handleLogin() {
   error.value = null;
   loading.value = true;
   try {
-    const loggedIn = await authStore.login(credentials.value);
-    if (loggedIn) {
+    // 1. Intentamos iniciar sesión a través del store.
+    const user = await authStore.login(credentials.value);
+
+    // 2. Si el login es exitoso (devuelve un objeto de usuario)...
+    if (user) {
+      // 3. ...redirigimos SIEMPRE al dashboard del frontend.
+      // La responsabilidad de ir a Filament ahora recae en el botón del layout.
       const redirectPath = route.query.redirect ? decodeURIComponent(route.query.redirect) : '/';
       router.push(redirectPath);
     }
   } catch (e) {
-    error.value = e.data?.message || 'No se pudo iniciar sesión.';
+    console.error('Error detallado capturado en handleLogin:', e);
+    error.value = e.response?._data?.message || e.message || 'Credenciales no válidas o error de conexión.';
   } finally {
     loading.value = false;
   }

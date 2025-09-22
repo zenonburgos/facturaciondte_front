@@ -20,13 +20,17 @@ export const useAuthStore = defineStore('auth', {
       if (!state.user) return null;
       return state.user.is_super_admin ? state.activeTenant : state.user.empresa;
     },
-    dteEnvironment: (state) => {
-      // Verificamos que el usuario y la empresa existan
-      if (!state.user || !state.user.empresa) {
+    dteEnvironment(state) {
+      // Usamos 'this.getActiveTenant' para obtener la empresa correcta,
+      // ya sea la del usuario o la que el Super Admin seleccionó.
+      const activeTenant = this.getActiveTenant;
+
+      // Si no hay una empresa activa, no hay ambiente que mostrar.
+      if (!activeTenant) {
         return null;
       }
 
-      const ambiente = state.user.empresa.mh_ambiente;
+      const ambiente = activeTenant.mh_ambiente;
 
       if (ambiente === '00') {
         return { text: 'Pruebas', color: 'blue-grey' };
@@ -35,62 +39,68 @@ export const useAuthStore = defineStore('auth', {
         return { text: 'Producción', color: 'success' };
       }
       
-      // Fallback por si el valor no es ninguno de los esperados
       return { text: 'No Definido', color: 'grey' };
     },
   },
 
   actions: {
     async login(credentials) {
-      
-      const notificationStore = useNotificationStore();
-      notificationStore.show = false;
       const { $api } = useNuxtApp();
+      
       try {
-        //await $api('/sanctum/csrf-cookie');
-        //console.log("Cookie CSRF obtenida con éxito."); // Log para verificar
+        // 1. Pedimos la cookie de sesión a Sanctum
+        await $api('/sanctum/csrf-cookie');
 
-        // --- PASO 2: Ahora sí, intentamos el login con las credenciales ---
+        // 2. Intentamos el login con las credenciales
         const response = await $api('/api/login', {
           method: 'POST',
           body: credentials,
         });
 
+        // 3. Si es exitoso, actualizamos el estado
         if (response.access_token) {
           this.setToken(response.access_token);
-          // Guardamos el usuario que viene en la respuesta del login
           this.setUser(response.user);
-
-          // ✅ --- LÓGICA DE REDIRECCIÓN --- ✅
-          if (this.user.is_super_admin) {
-            // Si es Super Admin, lo redirigimos al panel de Filament.
-            // Usamos window.location para una redirección completa fuera de la app de Nuxt.
-            const adminUrl = useRuntimeConfig().public.adminUrl;
-            window.location.href = adminUrl || '/admin';
-          } else {
-            // Si es un usuario normal, vamos al dashboard de Nuxt.
-            const router = useRouter();
-            const route = useRoute();
-            const redirectPath = route.query.redirect ? decodeURIComponent(route.query.redirect) : '/';
-            await router.push(redirectPath);
-          }
-          return true;
+          
+          // 4. Devolvemos el objeto del usuario para que el componente decida qué hacer
+          return response.user; 
         }
+        return null;
+
       } catch (error) {
-        console.error('Error en el store de login:', error.data);
+        console.error('ERROR en el store de login:', error);
         throw error;
       }
     },
 
     // ✅ NUEVA ACCIÓN: Para que el Super Admin pueda cambiar de empresa
-    setActiveTenant(tenant) {
+    async setActiveTenant(tenant) {
+      // Nos aseguramos de que solo un Super Admin pueda ejecutar esto
       if (this.user && this.user.is_super_admin) {
-        this.activeTenant = tenant;
-        // Opcional: podrías guardar esto en localStorage para persistencia
-        // y recargar la página para refrescar todos los datos.
-        window.location.reload(); 
+        const { $api } = useNuxtApp();
+        try {
+          // 1. Notificamos al backend sobre el cambio de contexto
+          await $api(`/api/set-active-tenant/${tenant.id}`, {
+            method: 'POST',
+          });
+          
+          // 2. Actualizamos el estado local en el store
+          this.activeTenant = tenant;
+
+          // 3. ¡CRUCIAL! Recargamos la página para refrescar todos los datos
+          window.location.reload();
+
+        } catch (error) {
+          console.error("Error al cambiar de tenant:", error);
+          const notificationStore = useNotificationStore();
+          notificationStore.showNotification({ 
+            message: 'No se pudo cambiar de empresa. Inténtalo de nuevo.', 
+            color: 'error' 
+          });
+        }
       }
     },
+
 
     async logout() {
       console.log('TRACE 3: authStore.logout() ha sido llamado.');
@@ -139,7 +149,15 @@ export const useAuthStore = defineStore('auth', {
     },
 
     setUser(user) {
-      this.user = user;
+        this.user = user;
+        // ================================================================
+        // LÓGICA MEJORADA
+        // Ahora, el estado 'activeTenant' se inicializa con el valor que
+        // viene del backend (que puede ser null o la última empresa usada).
+        // ================================================================
+        if (user && user.is_super_admin) {
+            this.activeTenant = user.active_tenant || null;
+        }
     },
     
     setBackendStatus(status) {

@@ -29,7 +29,13 @@
           <v-btn size="small" variant="text" class="ml-4">Sincronizar</v-btn>
         </v-alert>
 
-        <v-navigation-drawer v-model="drawer" app class="custom-sidebar">
+        <v-navigation-drawer 
+          v-model="drawer" 
+          app 
+          class="custom-sidebar"
+          :rail="isUIBlocked"
+          :expand-on-hover="isUIBlocked"
+        >
           <v-list>
             <v-list-item
               class="px-4"
@@ -39,24 +45,13 @@
               :link="!!companyLink"
             >
               <template v-slot:prepend>
-                <v-avatar color="white">
-                  <v-img
-                    v-if="companyLogoUrl"
-                    :src="companyLogoUrl"
-                    :alt="companyHeaderText"
-                    cover
-                  ></v-img>
-                  <span v-else class="text-h6 text-primary">{{ userInitials }}</span>
+              <v-avatar color="white">
+                <v-img v-if="companyLogoUrl" :src="companyLogoUrl" :alt="companyHeaderText" cover></v-img>
+                <span v-else class="text-h6 text-primary">{{ userInitials }}</span>
                 </v-avatar>
               </template>
-              <div v-if="authStore.dteEnvironment" class="mt-2">
-                <v-chip
-                  :color="authStore.dteEnvironment.color"
-                  size="small"
-                  label
-                  variant="tonal"
-                  prepend-icon="mdi-server-network"
-                >
+              <div v-if="authStore.dteEnvironment && !isUIBlocked" class="mt-2">
+              <v-chip :color="authStore.dteEnvironment.color" size="small" label variant="tonal" prepend-icon="mdi-server-network">
                   Ambiente: <strong>{{ authStore.dteEnvironment.text }}</strong>
                 </v-chip>
               </div>
@@ -65,7 +60,7 @@
 
           <v-divider></v-divider>
 
-          <v-list nav>
+          <v-list nav :disabled="isUIBlocked">
             <v-list-item prepend-icon="mdi-view-dashboard" title="Dashboard" value="dashboard" to="/"></v-list-item>
             <v-list-item prepend-icon="mdi-plus-box" title="Emitir DTE" value="emitir" to="/emitir"></v-list-item>
             <v-list-item prepend-icon="mdi-history" title="Historial" value="historial" to="/historial"></v-list-item>
@@ -122,20 +117,17 @@
 
           <div v-if="authStore.user?.is_super_admin" class="mr-4" style="max-width: 300px;">
             <v-select
-              v-model="selectedTenantId"
+              v-model="selectedTenant"
               :items="authStore.user.available_tenants || []"
               item-title="nombre"
-              item-value="id"
               label="Trabajando en"
+              placeholder="Seleccione una empresa"
               density="compact"
               hide-details
               variant="solo-filled"
+              return-object
               @update:modelValue="handleTenantChange"
-            >
-              <template v-slot:prepend-inner>
-                <v-icon icon="mdi-domain" class="mr-2"></v-icon>
-              </template>
-            </v-select>
+            ></v-select>
           </div>
 
           <v-menu v-if="authStore.isAuthenticated" location="bottom">
@@ -199,6 +191,13 @@
         </v-app-bar>
 
         <v-main>
+           <v-container v-if="isUIBlocked" fluid class="d-flex justify-center align-center" style="height: 100%;">
+            <div class="text-center">
+              <v-icon size="64" color="grey-lighten-1">mdi-domain-off</v-icon>
+              <h2 class="text-h5 mt-4 text-medium-emphasis">No hay empresa activa</h2>
+              <p class="mt-2">Por favor, selecciona una empresa en la barra superior para comenzar.</p>
+            </div>
+          </v-container>
           <v-container fluid>
             <slot />
           </v-container>
@@ -220,13 +219,16 @@ import { useAuthStore } from '~/stores/auth'; // Importamos nuestro store
 import { useNotificationStore } from '~/stores/notifications';
 import { useRouter } from 'vue-router'; 
 
-const selectedTenantId = ref(null);
+const selectedTenant = ref(null);
 
-const handleTenantChange = (tenantId) => {
-  const selectedTenant = authStore.user.available_tenants.find(t => t.id === tenantId);
-  if (selectedTenant) {
-    // Usamos la acción que ya creamos en el store
-    authStore.setActiveTenant(selectedTenant); 
+const isUIBlocked = computed(() => {
+  return authStore.user?.is_super_admin && !authStore.getActiveTenant;
+});
+
+const handleTenantChange = (tenant) => {
+  if (tenant) {
+    // Llama a la acción del store que se comunica con el backend
+    authStore.setActiveTenant(tenant);
   }
 };
 
@@ -282,11 +284,15 @@ onMounted(() => {
   }
 });
 
-watch(() => authStore.getActiveTenant, (newTenant) => {
-  if (newTenant) {
-    selectedTenantId.value = newTenant.id;
+watchEffect(() => {
+  if (authStore.user?.is_super_admin) {
+    selectedTenant.value = authStore.getActiveTenant;
   }
 });
+
+watch(() => authStore.getActiveTenant, (newTenant) => {
+  selectedTenant.value = newTenant;
+}, { immediate: true });
 
 async function handleLogout() {
   await authStore.logout();
@@ -314,6 +320,7 @@ function userHasRole(roles) {
   //    está incluido en la lista de roles que permitimos (ej. ['Admin', 'Encargado de Negocio']).
   return authStore.user.roles.some(userRole => roles.includes(userRole.name));
 }
+
 </script>
 
 <style>
