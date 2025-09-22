@@ -42,7 +42,17 @@
               </v-autocomplete>
             </v-col>
 
-              <v-col cols="12"><v-text-field label="Correo Electrónico" v-model="editedItem.correo" type="email"></v-text-field></v-col>
+              <v-col cols="12">
+                <v-text-field
+                  label="Correo Electrónico"
+                  :model-value="editedItem.correo"
+                  @update:model-value="editedItem.correo = $event ? $event.toLowerCase().trim() : null"
+                  type="email"
+                  :rules="[rules.email]"
+                  hint="El correo se convertirá a minúsculas automáticamente."
+                  persistent-hint
+                ></v-text-field>
+              </v-col>
             </v-row>
             <!-- SECCIÓN PARA OTROS DOCUMENTOS (DUI, Pasaporte, etc.) -->
             <v-divider class="my-4"></v-divider>
@@ -189,6 +199,15 @@ const headers = [
 
 const rules = {
   required: value => !!value || 'Este campo es requerido.',
+  email: value => {
+    // Permite que el campo sea opcional (nullable)
+    if (!value) return true;
+    
+    // Regex robusta para validar el formato del correo electrónico
+    const pattern = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    
+    return pattern.test(value) || 'El formato del correo electrónico no es válido.';
+  }
 };
 
 // --- LÓGICA QUE NO CAMBIA ---
