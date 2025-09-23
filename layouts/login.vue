@@ -5,11 +5,14 @@
       <slot />
     </v-main>
 
-    <TheFooter />
+    <TheFooter v-if="isFooterVisible" />
   </v-app>
 </template>
 
 <script setup>
 // Importamos el footer para que el layout pueda usarlo
 import TheFooter from '~/components/TheFooter.vue';
+import { useFooterVisibility } from '~/composables/useFooterVisibility';
+
+const isFooterVisible = useFooterVisibility();
 </script>

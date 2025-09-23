@@ -1,6 +1,6 @@
 <template>
   <v-container>
-    <v-card max-width="900px" class="mx-auto pa-4">
+    <v-card max-width="900px" class="mx-auto pa-4 pa-md-6 pb-16">
       <v-card-title class="text-h4 text-center mb-4">
         Crear Nueva Cuenta
       </v-card-title>
@@ -202,9 +202,21 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNotificationStore } from '~/stores/notifications';
+import { useFooterVisibility } from '~/composables/useFooterVisibility';
 
 definePageMeta({
   layout: 'login', // Usamos el layout de login para una apariencia consistente
+});
+
+const isFooterVisible = useFooterVisibility();
+// Cuando el componente se monta, oculta el footer.
+onMounted(() => {
+  isFooterVisible.value = false;
+});
+// Cuando el componente se destruye (al navegar a otra página),
+// vuelve a mostrar el footer para que sea visible en el resto de la app.
+onUnmounted(() => {
+  isFooterVisible.value = true;
 });
 
 const isUsernameManuallyEdited = ref(false);
