@@ -1,27 +1,30 @@
 import { useAuthStore } from '~/stores/auth';
 
 export default defineNuxtRouteMiddleware((to) => {
-  // Leemos la bandera 'auth' de los metadatos de la ruta a la que vamos.
-  // Si la bandera no está definida o es 'undefined', asumimos que la ruta SÍ requiere autenticación (?? true).
-  const requiresAuth = to.meta.auth ?? true;
+  // --- FUSIÓN DE LÓGICAS ---
 
-  // Si la ruta está marcada explícitamente como pública (auth: false),
-  // como en nuestro archivo pages/p/[slug].vue, detenemos el middleware y permitimos el acceso.
+  // 1. La Lista de Invitados: Simple y explícita para rutas estáticas.
+  const publicRoutes = [
+    '/login', 
+    '/register',
+    // Si tienes una página de "olvidé mi contraseña", añádela aquí
+  ];
+
+  if (publicRoutes.includes(to.path)) {
+    return; // Permite el acceso a /login y /register
+  }
+
+  // 2. El Sistema de Banderas: Flexible para páginas dinámicas y casos especiales.
+  const requiresAuth = to.meta.auth ?? true;
   if (requiresAuth === false) {
-    return; // Permite la navegación
+    return; // Permite el acceso a cualquier página con 'auth: false'
   }
   
-  // Si la ruta es la de login, tampoco hacemos nada para evitar un bucle de redirección.
-  if (to.path === '/login') {
-    return;
-  }
-
-  // A partir de aquí, es la lógica para rutas protegidas que no son públicas.
+  // --- LÓGICA DEL GUARDIA DE SEGURIDAD (sin cambios) ---
   const authStore = useAuthStore();
   
   if (!authStore.isAuthenticated) {
-    // Si el usuario no está autenticado, lo redirigimos al login,
-    // guardando la ruta a la que intentaba ir.
+    // Si la ruta no es pública y el usuario no está autenticado, lo redirigimos.
     return navigateTo('/login', {
       query: {
         redirect: to.fullPath,

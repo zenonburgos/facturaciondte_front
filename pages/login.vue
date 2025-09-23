@@ -127,8 +127,7 @@
 
                 <div class="text-center">
                   <p class="mb-4 text-medium-emphasis">¿Eres nuevo en la plataforma?</p>
-                  <!-- Asumiendo que tienes este componente -->
-                  <!-- <RegisterButton /> -->
+                  <RegisterButton />
                 </div>
               </div>
             </v-col>
