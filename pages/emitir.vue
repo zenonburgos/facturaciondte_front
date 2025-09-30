@@ -1110,7 +1110,7 @@ function resetForm() {
 async function handleDocumentoSeleccionado(selectedDoc) {
   // Si el usuario borra la selección, limpiamos el formulario
   if (!selectedDoc) {
-    form.value.cliente = genericClient.value; // Volvemos al cliente genérico o null
+    form.value.cliente = null; // Volvemos al cliente genérico o null
     form.value.items = [];
     return;
   }
@@ -1122,11 +1122,12 @@ async function handleDocumentoSeleccionado(selectedDoc) {
     const originalDte = await $api(`/api/invoices/${selectedDoc.codigo_generacion}`);
 
     // 1. Autocompletamos el cliente con los datos del receptor del DTE original
-    form.value.cliente = originalDte.json_enviado.receptor;
+    // form.value.cliente = originalDte.json_enviado.receptor;
+    form.value.cliente = originalDte.receptor;
 
     // 2. Autocompletamos los ítems
     // Mapeamos los ítems del CCFE original al formato que necesita nuestro formulario
-    form.value.items = originalDte.json_enviado.cuerpoDocumento.map(item => ({
+    form.value.items = originalDte.cuerpoDocumento.map(item => ({
       descripcion: item.descripcion,
       cantidad: item.cantidad,
       precio_unitario: item.precioUni,
