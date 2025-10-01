@@ -185,7 +185,20 @@ async function handleLogin() {
     }
   } catch (e) {
     console.error('Error detallado capturado en handleLogin:', e);
-    error.value = e.response?._data?.message || e.message || 'Credenciales no válidas o error de conexión.';
+    
+    // **MANEJO DE ERRORES MEJORADO**
+    if (e.response) {
+      // El servidor respondió con un error (ej. 401, 403, 500)
+      if (e.response.status === 401) {
+        error.value = 'Las credenciales proporcionadas son incorrectas.';
+      } else {
+        // Para otros errores del servidor (ej. cuenta inactiva 403)
+        error.value = e.response._data?.message || 'Ha ocurrido un error inesperado en el servidor.';
+      }
+    } else {
+      // El servidor nunca respondió. Puede ser un problema de red, CORS, o el backend está caído.
+      error.value = 'No se pudo conectar con el servidor. Por favor, revisa tu conexión o contacta a soporte.';
+    }
   } finally {
     loading.value = false;
   }

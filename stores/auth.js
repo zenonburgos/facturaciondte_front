@@ -103,29 +103,28 @@ export const useAuthStore = defineStore('auth', {
 
 
     async logout() {
-      console.log('TRACE 3: authStore.logout() ha sido llamado.');
       const { $api } = useNuxtApp();
       const router = useRouter(); // Obtenemos el router para redirigir
-      console.log('TRACE 3.5: ¿El router existe?', router);
 
         // Primero, le decimos al backend que invalide el token
-        try {
+        if (this.isAuthenticated) {
+          try {
             await $api('/api/logout', {
               method: 'POST',
-          });
-        } catch (error) {
-            console.error("Error al cerrar sesión en el backend, pero se procederá con el logout local.", error);
-        } finally {
-            // Limpiamos el estado y la cookie, sin importar si la llamada a la API falló
-            console.log('TRACE 4: Limpiando estado local y preparando para redirigir.'); // <--- AÑADIR ESTO
-            this.token = null;
-            this.user = null;
-            const authTokenCookie = useCookie('auth_token');
-            authTokenCookie.value = null;
-
-            // Redirigimos al usuario a la página de login
-            await router.push('/login');
+            });
+          } catch (error) {
+            console.error("Error al cerrar sesión en el backend (el token pudo haber expirado), pero se procederá con el logout local.", error);
+          }
         }
+
+        this.token = null;
+        this.user = null;
+        const authTokenCookie = useCookie('auth_token');
+        authTokenCookie.value = null;
+
+        // Redirigimos al usuario a la página de login
+        // Usamos 'replace' para que el usuario no pueda volver atrás con el botón del navegador
+        await router.replace('/login');
     },
 
     async fetchUser() {

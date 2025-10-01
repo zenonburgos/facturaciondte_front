@@ -1,49 +1,55 @@
+// plugins/api.ts
+
 import { ofetch } from 'ofetch';
 import { useAuthStore } from '~/stores/auth';
 
 export default defineNuxtPlugin((nuxtApp) => {
   const config = useRuntimeConfig();
+  
+  const publicAuthRoutes = ['/api/login', '/sanctum/csrf-cookie'];
 
   const apiFetch = ofetch.create({
     baseURL: config.public.apiBaseUrl,
-    credentials: 'include', // ¡Crucial! Envía las cookies con cada petición.
+    credentials: 'include',
 
-    onRequest({ options }) {
-      // Prepara las cabeceras para cada petición
+    // CAMBIO 1: El hook nos da 'request' y 'options'
+    onRequest({ request, options }) {
       options.headers = new Headers(options.headers);
       options.headers.set('X-Requested-With', 'XMLHttpRequest');
       options.headers.set('Accept', 'application/json');
 
-      // ================================================================
-      // ESTA ES LA LÓGICA QUE FALTABA
-      // Leemos la cookie XSRF y la enviamos de vuelta como una cabecera.
-      // ================================================================
       const csrfToken = useCookie('XSRF-TOKEN');
       if (csrfToken.value) {
         options.headers.set('X-XSRF-TOKEN', csrfToken.value);
       }
+      
+      // CAMBIO 2: Usamos 'request' en lugar de 'options.url'
+      const requestUrl = request.toString();
+      const isPublicAuthRoute = publicAuthRoutes.some(route => requestUrl.endsWith(route));
 
-      // Añadimos el token de autenticación si ya existe
       const authStore = useAuthStore();
-      if (authStore.token) {
+      if (authStore.isAuthenticated && !isPublicAuthRoute) {
         options.headers.set('Authorization', `Bearer ${authStore.token}`);
       }
     },
 
-    onResponseError({ response }) {
-      // Manejo de sesión expirada
-      if (response.status === 401 || response.status === 419) {
+    onResponseError({ request, response }) {
+      const requestUrl = request.toString();
+      const isPublicAuthRoute = publicAuthRoutes.some(route => requestUrl.endsWith(route));
+
+      if ((response.status === 401 || response.status === 419) && !isPublicAuthRoute) {
         const authStore = useAuthStore();
-        authStore.logout();
+        if (authStore.isAuthenticated) {
+          console.warn('Sesión expirada o no válida. Forzando logout...');
+          authStore.logout();
+        }
       }
     }
   });
 
-  // Hacemos que $api esté disponible en toda la aplicación.
   return {
     provide: {
       api: apiFetch,
     }
   };
 });
-
