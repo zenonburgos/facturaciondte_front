@@ -179,7 +179,7 @@
             v-model:search="searchTerm"
             :items="searchResults"
             :loading="searchLoading"
-            item-title="nombre"
+            :no-filter="true"  item-title="nombre"
             return-object
             label="Cliente"
             placeholder="Escriba para buscar..."
@@ -187,11 +187,31 @@
             class="mt-2"
             clearable
           >
-            <template v-slot:append>
-              <v-btn density="compact" color="primary" @click="openDialog" icon="mdi-plus" title="Crear Nuevo Cliente"></v-btn>
-            </template>
             <template v-slot:item="{ props, item }">
-              <v-list-item v-bind="props" :subtitle="`NIT: ${item.raw.nit || 'N/A'}`"></v-list-item>
+              <v-list-item v-bind="props" :title="item.raw.nombre" lines="two">
+                <template v-slot:subtitle>
+                  <div class="font-weight-bold">
+                    <span v-if="item.raw.numDocumento" title="DUI/Pasaporte/Otro">
+                      Doc: {{ item.raw.numDocumento }}
+                    </span>
+                    <span v-if="item.raw.nit" class="ml-3" title="Número de Identificación Tributaria">
+                      NIT: {{ item.raw.nit }}
+                    </span>
+                    <span v-if="item.raw.nrc" class="ml-3" title="Número de Registro de Contribuyente">
+                      NRC: {{ item.raw.nrc }}
+                    </span>
+                  </div>
+                  
+                  <div>
+                    <span v-if="item.raw.nombre_comercial && item.raw.nombre_comercial !== item.raw.nombre" title="Nombre Comercial">
+                      {{ item.raw.nombre_comercial }} |
+                    </span>
+                    <span v-if="item.raw.telefono" class="ml-1" title="Teléfono">
+                      Tel: {{ item.raw.telefono }}
+                    </span>
+                  </div>
+                </template>
+              </v-list-item>
             </template>
           </v-autocomplete>
           
@@ -549,6 +569,7 @@ const authStore = useAuthStore();
 const notificationStore = useNotificationStore();
 const router = useRouter();
 const route = useRoute();
+const isSelecting = ref(false);
 
 // --- ESTADOS ---
 const initialLoading = ref(true);
@@ -717,13 +738,31 @@ onMounted(async () => {
 
 // --- OBSERVADORES (WATCHERS) ---
 watch(searchTerm, (newVal) => {
-  // Evitamos que la búsqueda se dispare si el texto es el del cliente ya seleccionado
-  if (form.value.cliente && newVal === form.value.cliente.nombre) return;
-  
+  // Si la bandera está arriba (porque se está seleccionando un item),
+  // la bajamos y nos detenemos para no volver a buscar.
+  if (isSelecting.value) {
+    isSelecting.value = false;
+    return;
+  }
+
+  // Limpiamos cualquier búsqueda anterior que estuviera en espera.
   clearTimeout(searchTimeout);
+
+  // Verificamos si ya hay un cliente seleccionado y si el texto coincide con su nombre.
+  // Si es así, no hacemos nada para evitar búsquedas innecesarias.
+  if (form.value.cliente && newVal === form.value.cliente.nombre) {
+    return;
+  }
+
+  // ✅ --- LA CORRECCIÓN CLAVE ---
+  // Si el término de búsqueda tiene 2 o más caracteres, programamos la búsqueda.
   if (newVal && newVal.length >= 2) {
-    searchTimeout = setTimeout(() => fetchClients(newVal), 500);
-  } else {
+    searchTimeout = setTimeout(() => {
+      fetchClients(newVal);
+    }, 500);
+  } 
+  // Si el término es muy corto o nulo, limpiamos los resultados.
+  else {
     searchResults.value = [];
   }
 });
@@ -1247,6 +1286,4 @@ function productSelected(value) {
     newItem.value.precio_unitario = 0;
   }
 }
-
-
 </script>
