@@ -509,7 +509,15 @@
       </div>
     </v-expand-transition>
   </div>
-
+  <v-switch 
+      v-modeltch
+      v-if="authStore.user?.roles?.some(role => role.name === 'Admin')"
+      v-model="form.force_contingency"
+      color="orange-darken-3"
+      label="Enviar en Modo Contingencia"
+      hide-details
+      class="mb-4"
+    ></v-switch>
   <div class="w-100 w-sm-auto mt-4 mt-sm-0 d-flex justify-center order-sm-last order-last">
     <v-btn 
       color="success" 
@@ -591,6 +599,7 @@ const form = ref({
   items: [],
   documento_relacionado: null,
   documentos_retenidos: [],
+  force_contingency: false,
 });
 
 const condicionesOperacion = ref([
