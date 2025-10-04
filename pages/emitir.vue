@@ -179,7 +179,8 @@
             v-model:search="searchTerm"
             :items="searchResults"
             :loading="searchLoading"
-            :no-filter="true"  item-title="nombre"
+            :no-filter="true"
+            item-title="nombre"
             return-object
             label="Cliente"
             placeholder="Escriba para buscar..."
@@ -189,29 +190,25 @@
           >
             <template v-slot:item="{ props, item }">
               <v-list-item v-bind="props" :title="item.raw.nombre" lines="two">
-                <template v-slot:subtitle>
-                  <div class="font-weight-bold">
-                    <span v-if="item.raw.numDocumento" title="DUI/Pasaporte/Otro">
-                      Doc: {{ item.raw.numDocumento }}
-                    </span>
-                    <span v-if="item.raw.nit" class="ml-3" title="Número de Identificación Tributaria">
-                      NIT: {{ item.raw.nit }}
-                    </span>
-                    <span v-if="item.raw.nrc" class="ml-3" title="Número de Registro de Contribuyente">
-                      NRC: {{ item.raw.nrc }}
-                    </span>
-                  </div>
-                  
-                  <div>
-                    <span v-if="item.raw.nombre_comercial && item.raw.nombre_comercial !== item.raw.nombre" title="Nombre Comercial">
-                      {{ item.raw.nombre_comercial }} |
-                    </span>
-                    <span v-if="item.raw.telefono" class="ml-1" title="Teléfono">
-                      Tel: {{ item.raw.telefono }}
-                    </span>
-                  </div>
+                </v-list-item>
+            </template>
+
+            <template v-slot:append>
+              <v-tooltip location="top">
+                <template v-slot:activator="{ props }">
+                  <v-btn
+                    v-bind="props"
+                    color="primary"
+                    variant="tonal"
+                    @click="dialog.show = true"
+                    :icon="$vuetify.display.xs"
+                  >
+                    <v-icon :start="$vuetify.display.smAndUp">mdi-account-plus</v-icon>
+                    <span class="d-none d-sm-inline">Nuevo Cliente</span>
+                  </v-btn>
                 </template>
-              </v-list-item>
+                <span>Agregar nuevo cliente</span>
+              </v-tooltip>
             </template>
           </v-autocomplete>
           
