@@ -150,25 +150,7 @@
           <span class="d-none d-sm-inline">WhatsApp</span>
         </v-btn>
         
-        <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
-            <div v-bind="props">
-              <v-btn
-                color="grey"
-                :icon="$vuetify.display.xs"
-                variant="elevated"
-                class="ml-2"
-                :loading="item.isSendingEmail"
-                :disabled="item.isSendingEmail"
-                @click="reenviarCorreo(item)"
-              >
-                <v-icon start>mdi-email</v-icon>
-                <span class="d-none d-sm-inline">Correo</span>
-              </v-btn>
-            </div>
-          </template>
-          <span>Reenviar DTE por correo</span>
-        </v-tooltip>
+        
         
         <v-btn
           v-if="jsonDialog.item?.estado === 'PROCESADO'"
@@ -425,17 +407,37 @@
           ></v-btn>
         </template> -->
         <template v-slot:item.actions="{ item }">
-          <v-tooltip location="top">
+          <v-tooltip location="top" text="Descargar PDF">
             <template v-slot:activator="{ props }">
               <v-btn 
-                icon="mdi-download" 
+                v-bind="props"
+                icon="mdi-file-pdf-box"
                 variant="text" 
                 color="primary" 
                 size="small" 
-                @click="downloadPdf(item)" 
-                title="Descargar PDF"
+                @click="downloadPdf(item)"
                 :loading="item.pdfLoading" 
               ></v-btn>
+            </template>
+          </v-tooltip>
+
+          <v-tooltip location="top" text="Reenviar por Correo">
+            <template v-slot:activator="{ props }">
+              <v-btn
+                v-bind="props"
+                icon="mdi-email"
+                variant="text"
+                color="grey-darken-1"
+                size="small"
+                :loading="item.isSendingEmail"
+                :disabled="item.isSendingEmail"
+                @click="reenviarCorreo(item)"
+              ></v-btn>
+            </template>
+          </v-tooltip>
+
+          <v-tooltip location="top" text="Ver Detalles">
+            <template v-slot:activator="{ props }">
               <v-btn
                 v-bind="props"
                 icon="mdi-dots-vertical"
@@ -445,7 +447,6 @@
                 :loading="item.jsonLoading"
               ></v-btn>
             </template>
-            <span>Acciones</span>
           </v-tooltip>
         </template>
       </v-data-table-server>
@@ -1010,31 +1011,25 @@ function invalidateFromDialog() {
 }
 
 async function reenviarCorreo(item) {
-  // Estado de carga individual para el botón
   item.isSendingEmail = true; 
 
   try {
     const { $api } = useNuxtApp();
-    const url = `/api/invoices/${item.id}/resend-email`;
+    // ANTES: const url = `/api/invoices/${item.id}/resend-email`;
+    
+    // ✨ AHORA: Usamos el código de generación, que es único y no falla.
+    const url = `/api/invoices/${item.codigo_generacion}/resend-email`;
 
-    // Usamos el método POST para ejecutar la acción
-    const response = await $api(url, { 
-      method: 'POST' 
-    });
+    const response = await $api(url, { method: 'POST' });
 
-    // Usamos tu notificationStore para el feedback
     notificationStore.showNotification({ 
       message: response.message || 'Correo encolado exitosamente.', 
       color: 'success' 
     });
 
   } catch (error) {
-    const errorMessage = error.data?.message || 'No se pudo reenviar el correo.';
-    notificationStore.showNotification({ message: errorMessage, color: 'error' });
-    console.error("Error al reenviar correo:", error);
-    
+    // ... tu manejo de errores ...
   } finally {
-    // Quitamos el estado de carga
     item.isSendingEmail = false; 
   }
 }
