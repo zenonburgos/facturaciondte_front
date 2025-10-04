@@ -330,7 +330,7 @@
                   v-model="newItem.descripcion"
                   label="Buscar Producto o escribir Descripción"
                   :items="searchedProducts"
-                  item-title="descripcion"
+                  item-title="nombre"
                   @update:search="searchProducts"
                   :loading="isSearching"
                   no-filter
@@ -354,7 +354,7 @@
                   <template v-slot:item="{ props, item }">
                     <v-list-item 
                       v-bind="props" 
-                      :title="item.raw.descripcion" 
+                      :title="item.raw.nombre" 
                       :subtitle="`Código: ${item.raw.codigo} | Precio: $${item.raw.precio_unitario}`"
                     ></v-list-item>
                   </template>
@@ -1264,18 +1264,17 @@ async function searchProducts(query) {
 }
 
 function productSelected(value) {
-  // Caso 1: El usuario seleccionó un PRODUCTO de la lista (es un objeto)
+  // Caso 1: El usuario seleccionó un PRODUCTO (es un objeto)
   if (typeof value === 'object' && value !== null) {
-    newItem.value.descripcion = value.descripcion;
+    // ✅ ÚNICO CAMBIO REAL. Usamos el nombre del producto como descripción.
+    newItem.value.descripcion = value.nombre;
+    
     newItem.value.precio_unitario = parseFloat(value.precio_unitario);
     newItem.value.codigo = value.codigo;
   } 
   // Caso 2: El usuario está escribiendo TEXTO LIBRE (es un string)
   else if (typeof value === 'string') {
     newItem.value.descripcion = value;
-
-    // Si el texto no corresponde a un producto seleccionado, nos aseguramos
-    // de que no haya un código ni precio preestablecido del producto anterior.
     newItem.value.codigo = null;
     newItem.value.precio_unitario = 0;
   }

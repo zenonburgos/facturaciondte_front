@@ -83,6 +83,13 @@
                 value="clientes"
                 to="/gestion/clientes"
               ></v-list-item>
+              <v-list-item
+                v-if="userHasRole(['Admin', 'Encargado de Negocio']) && authStore.getActiveTenant?.usa_inventario"
+                prepend-icon="mdi-package-variant-closed"
+                title="Gestión de Productos"
+                value="productos"
+                to="/gestion/productos"
+              ></v-list-item>
             </template>
           </v-list>
         </v-navigation-drawer>
