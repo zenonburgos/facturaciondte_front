@@ -158,14 +158,16 @@
                 :icon="$vuetify.display.xs"
                 variant="elevated"
                 class="ml-2"
-                :disabled="true"
+                :loading="item.isSendingEmail"
+                :disabled="item.isSendingEmail"
+                @click="reenviarCorreo(item)"
               >
                 <v-icon start>mdi-email</v-icon>
                 <span class="d-none d-sm-inline">Correo</span>
               </v-btn>
             </div>
           </template>
-          <span>Función no disponible</span>
+          <span>Reenviar DTE por correo</span>
         </v-tooltip>
         
         <v-btn
@@ -1004,6 +1006,36 @@ function invalidateFromDialog() {
   if (item) {
     openInvalidateDialog(item);
     jsonDialog.value.show = false; // Cerramos el diálogo para abrir el de invalidar
+  }
+}
+
+async function reenviarCorreo(item) {
+  // Estado de carga individual para el botón
+  item.isSendingEmail = true; 
+
+  try {
+    const { $api } = useNuxtApp();
+    const url = `/api/invoices/${item.id}/resend-email`;
+
+    // Usamos el método POST para ejecutar la acción
+    const response = await $api(url, { 
+      method: 'POST' 
+    });
+
+    // Usamos tu notificationStore para el feedback
+    notificationStore.showNotification({ 
+      message: response.message || 'Correo encolado exitosamente.', 
+      color: 'success' 
+    });
+
+  } catch (error) {
+    const errorMessage = error.data?.message || 'No se pudo reenviar el correo.';
+    notificationStore.showNotification({ message: errorMessage, color: 'error' });
+    console.error("Error al reenviar correo:", error);
+    
+  } finally {
+    // Quitamos el estado de carga
+    item.isSendingEmail = false; 
   }
 }
 </script>

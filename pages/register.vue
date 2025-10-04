@@ -57,11 +57,23 @@
             <v-col cols="12" md="6">
               <v-text-field v-model="form.empresa_correo" label="Correo Electrónico de la Empresa" :rules="[rules.required, rules.email]" type="email" variant="outlined" density="compact"></v-text-field>
             </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field v-model="form.empresa_actividad_codigo" label="Código de Actividad Económica" :rules="[rules.required]" variant="outlined" density="compact"></v-text-field>
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field v-model="form.empresa_actividad_desc" label="Descripción de Actividad Económica" :rules="[rules.required]" variant="outlined" density="compact"></v-text-field>
+            <v-col cols="12">
+                <v-autocomplete
+                    v-model="selectedActividad"
+                    @update:search="searchActividades"
+                    :items="actividadResults"
+                    :loading="actividadLoading"
+                    item-title="descripcion"
+                    item-value="codigo"
+                    return-object
+                    label="Buscar Actividad Económica (por código o descripción)"
+                    placeholder="Escribe 2 o más caracteres para buscar..."
+                    variant="outlined"
+                    density="compact"
+                    no-filter
+                    clearable
+                >
+                    </v-autocomplete>
             </v-col>
             <v-col cols="12" md="6">
                 <v-select
@@ -199,10 +211,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNotificationStore } from '~/stores/notifications';
 import { useFooterVisibility } from '~/composables/useFooterVisibility';
+
+const selectedActividad = ref(null);
+const actividadResults = ref([]);
+const actividadLoading = ref(false);
+let actividadTimeout = null;
 
 definePageMeta({
   layout: 'login', // Usamos el layout de login para una apariencia consistente
@@ -280,6 +297,8 @@ const municipalities = computed(() => {
     value: mun.codigo, // <-- Simple y directo. Sin .substr()
   }));
 });
+
+
 
 // WATCH: Observa si el usuario cambia el departamento
 watch(() => form.value.empresa_direccion.departamento, (newDepartment, oldDepartment) => {
@@ -409,4 +428,35 @@ async function handleRegister() {
     loading.value = false;
   }
 }
+
+function searchActividades(query) {
+    clearTimeout(actividadTimeout);
+    if (query && query.length >= 2) {
+        actividadTimeout = setTimeout(async () => {
+            actividadLoading.value = true;
+            try {
+                const { $api } = useNuxtApp(); // Obtenemos $api aquí
+                const response = await $api(`/api/actividades-economicas/search?term=${query}`);
+                actividadResults.value = response;
+            } catch (error) {
+                notificationStore.showNotification({ message: 'Error al buscar actividades.', color: 'error' });
+            } finally {
+                actividadLoading.value = false;
+            }
+        }, 500);
+    } else {
+        actividadResults.value = [];
+    }
+}
+
+// Watcher que auto-rellena el formulario al seleccionar
+watch(selectedActividad, (selection) => {
+    if (selection && typeof selection === 'object') {
+        form.value.empresa_actividad_codigo = selection.codigo;
+        form.value.empresa_actividad_desc = selection.descripcion;
+    } else if (!selection) {
+        form.value.empresa_actividad_codigo = '';
+        form.value.empresa_actividad_desc = '';
+    }
+});
 </script>
