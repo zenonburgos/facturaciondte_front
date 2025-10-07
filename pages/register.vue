@@ -157,7 +157,7 @@
               <v-text-field v-model="form.mh_password_api" label="Clave acceso API Hacienda" type="password" variant="outlined" density="compact"></v-text-field>
             </v-col>
             <v-col cols="12" md="6">
-              <v-text-field v-model="form.mh_password_certificado" label="Clave privada del Certificado (.p12)" type="password" variant="outlined" density="compact"></v-text-field>
+              <v-text-field v-model="form.mh_password_certificado" label="Clave privada del Certificado (.crt)" type="password" variant="outlined" density="compact"></v-text-field>
             </v-col>
           </v-row>
           <v-row>
@@ -168,7 +168,7 @@
                 accept=".crt"
                 :rules="[rules.certificateFile]" variant="outlined"
                 density="compact"
-                hint="Seleccione el archivo .crt proporcionado por la entidad certificadora."
+                hint="Seleccione el archivo .crt proporcionado por el Ministerio de Hacienda."
                 persistent-hint
               ></v-file-input>
             </v-col>

@@ -321,7 +321,7 @@
             <h3 class="mt-8">Ítems</h3>
             <v-divider class="mb-4"></v-divider>
             <v-row align="center">
-              <v-col cols="12" md="5">
+              <v-col cols="12" md="4">
                 <v-combobox
                  v-if="authStore.user?.empresa?.usa_inventario"
                   v-model="newItem.descripcion"
@@ -381,8 +381,15 @@
                 <v-text-field v-model.number="newItem.precio_unitario" :label="precioUnitarioLabel" type="number" prefix="$" variant="outlined" density="compact" hide-details="auto"></v-text-field>
               </v-col>
               
-              <v-col cols="12" md="2">
-                <v-btn color="primary" @click="addItem" prepend-icon="mdi-plus" size="large">Añadir</v-btn>
+              <v-col cols="12" sm="4" md="3" class="d-flex align-center mt-2 mt-sm-0">
+                <v-checkbox
+                  v-model="newItem.esExento"
+                  label="Venta Exenta"
+                  color="primary"
+                  hide-details
+                ></v-checkbox>
+                
+                <v-btn class="ml-auto" color="primary" @click="addItem" prepend-icon="mdi-plus" size="large">Añadir</v-btn>
               </v-col>
             </v-row>
 
@@ -559,8 +566,6 @@ import { useRoute } from 'vue-router';
 import { useAuthStore } from '~/stores/auth';
 import { useNotificationStore } from '~/stores/notifications';
 
-
-
 const { $api } = useNuxtApp();
 const authStore = useAuthStore();
 const notificationStore = useNotificationStore();
@@ -667,6 +672,7 @@ const newItem = ref({
   tipoItem: 1,
   uniMedida: 59,
   codigo: null,
+  esExento: false,
 });
 
 const dialog = ref({
@@ -1002,6 +1008,7 @@ function addItem() {
     precio_unitario: 0, 
     tipoItem: 1, 
     uniMedida: 59,
+    esExento: false,
     codigo: null // <-- Línea añadida
   };
 }
