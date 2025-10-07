@@ -1179,14 +1179,27 @@ async function handleDocumentoSeleccionado(selectedDoc) {
 
     // 2. Autocompletamos los ítems
     // Mapeamos los ítems del CCFE original al formato que necesita nuestro formulario
-    form.value.items = originalDte.cuerpoDocumento.map(item => ({
-      descripcion: item.descripcion,
-      cantidad: item.cantidad,
-      precio_unitario: item.precioUni,
-      codigo: item.codigo, // Incluimos el código si existe
-      tipoItem: item.tipoItem,
-      uniMedida: item.uniMedida,
-    }));
+    form.value.items = originalDte.cuerpoDocumento.map(item => {
+      
+      // a. Determinamos si el ítem original era exento
+      const eraExento = item.ventaExenta > 0;
+
+      // b. Calculamos el precio unitario final (con IVA si aplica)
+      const precioUnitarioParaForm = eraExento
+        ? item.precioUni // Si era exento, el precio es el mismo
+        : parseFloat((item.precioUni * 1.13).toFixed(5)); // Si era gravado, le agregamos el IVA de vuelta
+
+      // c. Devolvemos el objeto completo para el formulario
+      return {
+        descripcion: item.descripcion,
+        cantidad: item.cantidad,
+        precio_unitario: precioUnitarioParaForm, // <-- Precio corregido
+        codigo: item.codigo,
+        tipoItem: item.tipoItem,
+        uniMedida: item.uniMedida,
+        esExento: eraExento, // <-- Campo 'esExento' añadido
+      };
+    });
 
     notificationStore.showNotification({ message: 'Cliente e ítems cargados desde el CCFE original.', color: 'info' });
 
