@@ -401,6 +401,7 @@
                   <th class="text-left">U. Medida</th>
                   <th class="text-left">Cantidad</th>
                   <th class="text-left">P. Unitario</th>
+                  <th class="text-right">IVA</th> <th class="text-right">Subtotal</th>
                   <th class="text-right">Subtotal</th>
                   <th></th>
                 </tr>
@@ -412,6 +413,7 @@
                   <td>{{ getUnidadMedidaNombre(item.uniMedida) }}</td>
                   <td>{{ item.cantidad }}</td>
                   <td>${{ item.precio_unitario.toFixed(2) }}</td>
+                  <td class="text-right">${{ item.iva_item.toFixed(2) }}</td>
                   <td class="text-right">${{ (item.cantidad * item.precio_unitario).toFixed(2) }}</td>
                   <td><v-btn icon="mdi-delete" variant="text" color="error" size="x-small" @click="removeItem(index)"></v-btn></td>
                 </tr>
@@ -673,6 +675,7 @@ const newItem = ref({
   uniMedida: 59,
   codigo: null,
   esExento: false,
+  iva_item: 0
 });
 
 const dialog = ref({
@@ -855,19 +858,24 @@ const precioUnitarioLabel = computed(() => 'Precio Unitario (con IVA)');
 // });
 
 const subtotales = computed(() => {
-  // El 'total' es la suma de los precios que el usuario ingresó (que ya incluyen IVA)
-  const total = form.value.items.reduce((acc, item) => acc + (item.cantidad * item.precio_unitario), 0);
+  // Usamos .reduce() para sumar los valores de todos los ítems en el array
+  const subTotal = form.value.items.reduce((sum, item) => sum + (item.cantidad * item.precio_unitario / 1.13), 0);
+  const totalExenta = form.value.items.reduce((sum, item) => item.esExento ? sum + (item.cantidad * item.precio_unitario) : sum, 0);
+  const totalGravada = subTotal - totalExenta; // O una suma similar si es necesario
   
-  // Si el total es 0, no hay nada que calcular.
-  if (total === 0) {
-      return { subTotal: 0, iva: 0, total: 0 };
-  }
+  // La clave: el IVA total es simplemente la suma de los IVAs de cada ítem
+  const iva = form.value.items.reduce((sum, item) => sum + (item.iva_item || 0), 0);
+  
+  // El total general es la suma de los subtotales más el IVA total
+  const total = subTotal + iva;
 
-  // La lógica de desglose es la misma tanto para FE como para CCFE
-  const baseImponible = total / 1.13;
-  const iva = total - baseImponible;
-  
-  return { subTotal: baseImponible, iva: iva, total: total };
+  return {
+    subTotal,
+    iva,
+    total,
+    totalExenta,
+    totalGravada
+  };
 });
 
 const validationErrors = computed(() => {
@@ -1001,7 +1009,13 @@ function addItem() {
   
   form.value.items.push({ ...newItem.value });
   
-  // 👇 CORREGIMOS EL RESETEO PARA QUE INCLUYA EL CÓDIGO 👇
+  let ivaDelItem = 0;
+  if (!newItemObject.esExento) {
+    const totalItem = newItemObject.cantidad * newItemObject.precio_unitario;
+    const baseItem = totalItem / 1.13;
+    ivaDelItem = totalItem - baseItem;
+  }
+  form.value.items.push(newItemObject);
   newItem.value = { 
     descripcion: '', 
     cantidad: 1, 
@@ -1009,7 +1023,8 @@ function addItem() {
     tipoItem: 1, 
     uniMedida: 59,
     esExento: false,
-    codigo: null // <-- Línea añadida
+    ivaDelItem: 0,
+    codigo: null,
   };
 }
 
@@ -1162,50 +1177,46 @@ function resetForm() {
 async function handleDocumentoSeleccionado(selectedDoc) {
   // Si el usuario borra la selección, limpiamos el formulario
   if (!selectedDoc) {
-    form.value.cliente = null; // Volvemos al cliente genérico o null
+    form.value.cliente = null;
     form.value.items = [];
     return;
   }
 
-  loading.value = true; // Activa el indicador de carga del formulario
+  loading.value = true;
   try {
-    const { $api } = useNuxtApp();
-    // Llamamos al nuevo endpoint que creamos en Laravel
     const originalDte = await $api(`/api/invoices/${selectedDoc.codigo_generacion}`);
 
-    // 1. Autocompletamos el cliente con los datos del receptor del DTE original
-    // form.value.cliente = originalDte.json_enviado.receptor;
     form.value.cliente = originalDte.receptor;
 
-    // 2. Autocompletamos los ítems
-    // Mapeamos los ítems del CCFE original al formato que necesita nuestro formulario
+    // ✨ LÓGICA CLAVE: Mapeamos los ítems y añadimos los campos que faltan
     form.value.items = originalDte.cuerpoDocumento.map(item => {
-      
-      // a. Determinamos si el ítem original era exento
       const eraExento = item.ventaExenta > 0;
-
-      // b. Calculamos el precio unitario final (con IVA si aplica)
-      const precioUnitarioParaForm = eraExento
-        ? item.precioUni // Si era exento, el precio es el mismo
-        : parseFloat((item.precioUni * 1.13).toFixed(5)); // Si era gravado, le agregamos el IVA de vuelta
-
-      // c. Devolvemos el objeto completo para el formulario
+      const precioUnitarioParaForm = eraExento 
+        ? item.precioUni 
+        : parseFloat((item.precioUni * 1.13).toFixed(5));
+      
+      let ivaDelItem = 0;
+      if (!eraExento) {
+        const totalItem = item.cantidad * precioUnitarioParaForm;
+        ivaDelItem = totalItem - (totalItem / 1.13);
+      }
+      
       return {
         descripcion: item.descripcion,
         cantidad: item.cantidad,
-        precio_unitario: precioUnitarioParaForm, // <-- Precio corregido
+        precio_unitario: precioUnitarioParaForm,
         codigo: item.codigo,
         tipoItem: item.tipoItem,
         uniMedida: item.uniMedida,
-        esExento: eraExento, // <-- Campo 'esExento' añadido
+        esExento: eraExento,
+        iva_item: ivaDelItem, // <-- Propiedad 'iva_item' añadida
       };
     });
 
     notificationStore.showNotification({ message: 'Cliente e ítems cargados desde el CCFE original.', color: 'info' });
 
   } catch (error) {
-    notificationStore.showNotification({ message: 'No se pudieron cargar los detalles del documento seleccionado.', color: 'error' });
-    // Limpiamos los campos en caso de error para evitar inconsistencias
+    notificationStore.showNotification({ message: 'No se pudieron cargar los detalles del documento.', color: 'error' });
     form.value.cliente = null;
     form.value.items = [];
   } finally {
@@ -1283,23 +1294,29 @@ async function searchProducts(query) {
 function productSelected(value) {
   // Caso 1: El usuario seleccionó un PRODUCTO (es un objeto)
   if (typeof value === 'object' && value !== null) {
-    // ✅ ÚNICO CAMBIO REAL. Usamos el nombre del producto como descripción.
     newItem.value.descripcion = value.nombre;
-    
     newItem.value.precio_unitario = parseFloat(value.precio_unitario);
     newItem.value.codigo = value.codigo;
-  } 
-  // Caso 2: El usuario está escribiendo TEXTO LIBRE (es un string)
-  else if (typeof value === 'string') {
-    newItem.value.descripcion = value;
+
+    // ✨ CORRECCIÓN DE LA REGRESIÓN: Actualizamos el checkbox
+    // Usamos 'es_exento_de_iva' que es el nombre que tenías originalmente
+    newItem.value.esExento = !!value.es_exento_de_iva;
+
+    // ✨ LÓGICA AÑADIDA: Pre-calculamos el IVA aquí
+    let ivaDelItem = 0;
+    if (!newItem.value.esExento) {
+      const totalItem = newItem.value.cantidad * newItem.value.precio_unitario;
+      ivaDelItem = totalItem - (totalItem / 1.13);
+    }
+    newItem.value.iva_item = ivaDelItem;
+
+  } else {
+    // Caso 2 y 3: Si se escribe texto libre o se limpia el campo, reseteamos todo
+    newItem.value.descripcion = typeof value === 'string' ? value : '';
     newItem.value.codigo = null;
     newItem.value.precio_unitario = 0;
-  }
-  // Caso 3: El usuario limpió el campo por completo
-  else {
-    newItem.value.descripcion = '';
-    newItem.value.codigo = null;
-    newItem.value.precio_unitario = 0;
+    newItem.value.esExento = false;
+    newItem.value.iva_item = 0; // Importante resetear el IVA también
   }
 }
 </script>
