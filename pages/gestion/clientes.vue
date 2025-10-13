@@ -82,6 +82,16 @@
                     ></v-select>
                 </v-col>
             </v-row>
+            <v-row>
+              <v-col cols="12">
+                  <v-switch
+                      v-model="editedItem.es_exento"
+                      label="Cliente Exento de IVA"
+                      color="primary"
+                      inset
+                  ></v-switch>
+              </v-col>
+            </v-row>
             <v-divider class="my-4"></v-divider>
             <h4 class="mt-4">Dirección</h4>
             <v-divider class="mb-2"></v-divider>
@@ -149,6 +159,11 @@
         <template v-slot:item.categoria_contribuyente="{ item }">
           <span>{{ getFriendlyCategoria(item.categoria_contribuyente) }}</span>
         </template>
+        <template v-slot:item.es_exento="{ item }">
+          <v-chip :color="item.es_exento ? 'teal' : 'grey-lighten-1'">
+            {{ item.es_exento ? 'Sí' : 'No' }}
+          </v-chip>
+        </template>
         <template v-slot:item.actions="{ item }">
           <v-icon class="me-2" @click="openEditDialog(item)">mdi-pencil</v-icon>
           <v-icon @click="openDeleteDialog(item)" :disabled="item.is_generic">mdi-delete</v-icon>
@@ -206,6 +221,7 @@ const headers = [
   { title: 'NIT', key: 'nit' },
   { title: 'NRC', key: 'nrc' },
   { title: 'Categoría', key: 'categoria_contribuyente' }, // <-- LÍNEA AÑADIDA
+  { title: 'Exento', key: 'es_exento' }, // <-- LÍNEA AÑADIDA
   { title: 'Teléfono', key: 'telefono' },
   { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
 ];
@@ -337,6 +353,8 @@ function openNewClientDialog() {
 function openEditDialog(item) {
     // Hacemos una copia profunda del item para evitar mutaciones no deseadas
     editedItem.value = JSON.parse(JSON.stringify(item));
+
+    editedItem.value.es_exento = !!editedItem.value.es_exento;
 
     // Aseguramos que el objeto 'direccion' exista
     if (!editedItem.value.direccion) {
