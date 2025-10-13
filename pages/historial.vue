@@ -336,6 +336,9 @@
                 <div v-if="item.tipo_dte === '03'" class="text-caption text-grey-darken-1">
                     <span class="font-weight-bold">IVA:</span> ${{ item.iva?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
                 </div>
+                <div v-if="item.json_enviado?.resumen?.ivaRete1 > 0" class="text-caption text-red">
+                  <span class="font-weight-bold">IVA Retenido:</span> -${{ item.json_enviado.resumen.ivaRete1.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+              </div>
             </div>
         </template>
 
