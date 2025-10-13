@@ -57,7 +57,7 @@
             <!-- SECCIÓN PARA OTROS DOCUMENTOS (DUI, Pasaporte, etc.) -->
             <v-divider class="my-4"></v-divider>
             <v-row>
-                <v-col cols="12" md="6">
+                <v-col cols="12" md="4">
                     <v-select
                         label="Otro Tipo de Documento"
                         v-model="editedItem.tipo_documento"
@@ -65,12 +65,21 @@
                         clearable
                     ></v-select>
                 </v-col>
-                <v-col cols="12" md="6">
+                <v-col cols="12" md="4">
                     <v-text-field 
                         label="Número del Otro Documento"
                         v-model="editedItem.num_documento"
                         :disabled="!editedItem.tipo_documento"
                     ></v-text-field>
+                </v-col>
+                <v-col cols="12" md="4">
+                    <v-select
+                        label="Categoría de Contribuyente"
+                        v-model="editedItem.categoria_contribuyente"
+                        :items="categoriasContribuyente"
+                        item-title="title"
+                        item-value="value"
+                    ></v-select>
                 </v-col>
             </v-row>
             <v-divider class="my-4"></v-divider>
@@ -137,6 +146,9 @@
         class="elevation-1"
         @update:options="loadItems"
       >
+        <template v-slot:item.categoria_contribuyente="{ item }">
+          <span>{{ getFriendlyCategoria(item.categoria_contribuyente) }}</span>
+        </template>
         <template v-slot:item.actions="{ item }">
           <v-icon class="me-2" @click="openEditDialog(item)">mdi-pencil</v-icon>
           <v-icon @click="openDeleteDialog(item)" :disabled="item.is_generic">mdi-delete</v-icon>
@@ -193,9 +205,17 @@ const headers = [
   { title: 'Nombre', key: 'nombre' },
   { title: 'NIT', key: 'nit' },
   { title: 'NRC', key: 'nrc' },
+  { title: 'Categoría', key: 'categoria_contribuyente' }, // <-- LÍNEA AÑADIDA
   { title: 'Teléfono', key: 'telefono' },
   { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
 ];
+
+const categoriasContribuyente = ref([
+    { title: 'Grande', value: 'GRANDE' },
+    { title: 'Mediano', value: 'MEDIANO' },
+    { title: 'Pequeño', value: 'PEQUENO' },
+    { title: 'Otro', value: 'OTRO' },
+]);
 
 const rules = {
   required: value => !!value || 'Este campo es requerido.',
@@ -429,5 +449,25 @@ async function confirmDelete() {
     } finally {
         deleteDialog.value.loading = false;
     }
+}
+
+function getFriendlyCategoria(categoria) {
+  // Si no hay categoría, devuelve un texto por defecto.
+  if (!categoria) return 'No Asignado';
+
+  // Compara el valor y devuelve su versión amigable.
+  switch (categoria) {
+    case 'GRANDE':
+      return 'Grande';
+    case 'MEDIANO':
+      return 'Mediano';
+    case 'PEQUENO':
+      return 'Pequeño';
+    case 'OTRO':
+      return 'Otro';
+    default:
+      // Si es un valor inesperado, solo lo capitaliza.
+      return categoria.charAt(0).toUpperCase() + categoria.slice(1).toLowerCase();
+  }
 }
 </script>
