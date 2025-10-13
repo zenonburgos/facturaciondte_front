@@ -320,6 +320,16 @@
           <div v-if="form.tipo_dte !== '07'">
             <h3 class="mt-8">Ítems</h3>
             <v-divider class="mb-4"></v-divider>
+            <!-- <v-row v-if="(form.tipo_dte === '03' || form.tipo_dte === '01') && form.cliente?.categoria_contribuyente === 'GRANDE'">
+                <v-col cols="12">
+                    <v-switch
+                        v-model="aplicaRetencion"
+                        label="Aplicar Retención 1% (Ventas gravadas >= $100)"
+                        color="primary"
+                        hide-details
+                    ></v-switch>
+                </v-col>
+            </v-row> -->
             <v-row align="center">
               <v-col cols="12" md="4">
                 <v-combobox
@@ -382,7 +392,19 @@
               </v-col>
               
               <v-col cols="12" sm="4" md="3" class="d-flex align-center mt-2 mt-sm-0">
+                <v-chip
+                  v-if="clienteEsExentoGlobal"
+                  color="teal"
+                  text-color="white"
+                  label
+                  prepend-icon="mdi-check-decagram"
+                  class="mr-4"
+                >
+                  Exento
+                </v-chip>
+                
                 <v-checkbox
+                  v-else
                   v-model="newItem.esExento"
                   label="Venta Exenta"
                   color="primary"
@@ -417,22 +439,41 @@
                 </tr>
               </tbody>
               <tfoot v-if="subtotales.total > 0">
-      
+        
                 <tr v-if="form.tipo_dte !== '01'">
-                    <td colspan="6" class="text-right font-weight-bold">SUBTOTAL</td>
+                    <td colspan="5" class="text-right font-weight-bold">SUBTOTAL</td>
                     <td class="text-right font-weight-bold">${{ subtotales.subTotal.toFixed(2) }}</td>
                     <td></td>
                 </tr>
 
                 <tr v-if="form.tipo_dte === '03'">
-                    <td colspan="6" class="text-right font-weight-bold">IVA (13%)</td>
+                    <td colspan="5" class="text-right font-weight-bold">IVA (13%)</td>
                     <td class="text-right font-weight-bold">${{ subtotales.iva.toFixed(2) }}</td>
                     <td></td>
                 </tr>
 
+                <tr v-if="aplicaRetencion">
+                    <td colspan="5" class="text-right font-weight-bold text-error">IVA RETENIDO (1%)</td>
+                    <td class="text-right font-weight-bold text-error">- ${{ ivaRetenidoCalculado.toFixed(2) }}</td>
+                    <td></td>
+                </tr>
+
+                <tr v-if="aplicaRetencion">
+                    <td colspan="5" class="text-right">
+                        <v-chip color="info" label size="small">
+                            <v-icon start icon="mdi-information-outline"></v-icon>
+                            Retención Automática (Gran Contribuyente)
+                        </v-chip>
+                    </td>
+                    <td class="text-right font-weight-bold text-error">- ${{ ivaRetenidoCalculado.toFixed(2) }}</td>
+                    <td></td>
+                </tr>
+                
                 <tr>
-                    <td colspan="5" class="text-right text-h6">TOTAL</td>
-                    <td class="text-right text-h6">${{ subtotales.total.toFixed(2) }}</td>
+                    <td colspan="5" class="text-right text-h6 font-weight-black">
+                        {{ aplicaRetencion ? 'TOTAL A PAGAR' : 'TOTAL' }}
+                    </td>
+                    <td class="text-right text-h6 font-weight-black">${{ totalAPagar.toFixed(2) }}</td>
                     <td></td>
                 </tr>
 
@@ -561,8 +602,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onActivated } from 'vue';
-import { useRoute } from 'vue-router';
+import { ref, computed, watch, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '~/stores/auth';
 import { useNotificationStore } from '~/stores/notifications';
 
@@ -571,9 +612,8 @@ const authStore = useAuthStore();
 const notificationStore = useNotificationStore();
 const router = useRouter();
 const route = useRoute();
-const isSelecting = ref(false);
 
-// --- ESTADOS ---
+// --- ESTADOS DEL COMPONENTE ---
 const initialLoading = ref(true);
 const loading = ref(false);
 const error = ref(null);
@@ -593,8 +633,6 @@ const searchLoadingDoc = ref(false);
 const searchResultsDoc = ref([]);
 let searchTimeoutDoc = null;
 
-//const genericClient = ref(null);
-
 const tiposDeItem = ref([
     { title: 'Bien', value: 1 },
     { title: 'Servicio', value: 2 }
@@ -603,13 +641,11 @@ const tiposDeItem = ref([
 const unidadesDeMedida = ref([
     { title: 'Unidad', value: 59 },
     { title: 'Otra', value: 99 },
-    //{ title: 'Servicio', value: 99 },
     { title: 'Días', value: 5 },
     { title: 'Mes', value: 6 },
     { title: 'Año', value: 7 },
     { title: 'Litro', value: 23 },
     { title: 'Kilogramo', value: 34 },
-    // Se pueden añadir más según el catálogo CAT-014
 ]);
 
 const form = ref({
@@ -618,11 +654,39 @@ const form = ref({
   condicion_operacion: '1',
   plazo: null,
   periodo: null,
-  cliente: null, // Inicializamos como null para claridad
+  cliente: null,
   items: [],
   documento_relacionado: null,
   documentos_retenidos: [],
   force_contingency: false,
+});
+
+const newItem = ref({
+  descripcion: '',
+  cantidad: 1,
+  precio_unitario: 0,
+  tipoItem: 1,
+  uniMedida: 59,
+  codigo: null,
+  esExento: false,
+});
+
+const resultDialog = ref({
+  show: false,
+  success: false,
+  title: '',
+  message: '',
+  details: ''
+});
+
+const dialog = ref({
+  show: false,
+  loading: false,
+  newClient: {
+    nombre: '', nit: '', nrc: '', correo: '', nombre_comercial: '',
+    cod_actividad: '', desc_actividad: '', telefono: '',
+    direccion: { departamento: null, municipio: null, complemento: '' }
+  }
 });
 
 const condicionesOperacion = ref([
@@ -637,135 +701,173 @@ const plazos = ref([
     { title: 'Años', value: '03' },
 ]);
 
-const rules = {
-  required: value => !!value || 'Este campo es requerido.',
-};
-
-const esVentaTercero = ref(false); // Checkbox para activar la sección
-const mandante = ref(null); // Aquí guardaremos el objeto del tercero seleccionado
-const mandanteSearchTerm = ref(''); // Para el input de búsqueda del tercero
+const esVentaTercero = ref(false);
+const mandante = ref(null);
+const mandanteSearchTerm = ref('');
 const mandanteSearchLoading = ref(false);
 const mandanteResults = ref([]);
 let mandanteSearchTimeout = null;
 
-const resultDialog = ref({
-  show: false,
-  success: false,
-  title: '',
-  message: '',
-  details: ''
-});
-
 const nuevoDocRetenido = ref({
-    tipoDte: '03', // Por defecto, un CCF
-    tipoDoc: 2,    // Por defecto, Electrónico
+    tipoDte: '03',
+    tipoDoc: 2,
     numeroDocumento: '',
-    fechaEmision: new Date().toISOString().split('T')[0], // Fecha de hoy
+    fechaEmision: new Date().toISOString().split('T')[0],
     montoSujetoGrav: null,
     descripcion: ''
 });
 
-const newItem = ref({
-  descripcion: '',
-  cantidad: 1,
-  precio_unitario: 0,
-  tipoItem: 1,
-  uniMedida: 59,
-  codigo: null,
-  esExento: false,
+const rules = {
+  required: value => !!value || 'Este campo es requerido.',
+};
+
+
+// B. Base para cálculos: Total Gravado SIN IVA
+
+
+// ===================================================================
+// === LÓGICA FISCAL AUTOMATIZADA (VERSIÓN ÚNICA Y CORRECTA) ===
+// ===================================================================
+
+// 1. ¿El cliente seleccionado es Exento de IVA?
+const clienteEsExentoGlobal = computed(() => {
+    return form.value.cliente?.es_exento || false;
 });
 
-const dialog = ref({
-  show: false,
-  loading: false,
-  newClient: {
-    nombre: '', nit: '', nrc: '', correo: '', nombre_comercial: '',
-    cod_actividad: '', desc_actividad: '', telefono: '',
-    direccion: { departamento: null, municipio: null, complemento: '' }
-  }
-});
-
-// --- LÓGICA DE CARGA INICIAL ---
-onMounted(async () => {
-  initialLoading.value = true;
-  try {
-    // 1. Obtenemos los datos del usuario y los guardamos en una constante LOCAL.
-    const user = await authStore.fetchUser();
-
-    // 2. Si por alguna razón no obtenemos usuario, detenemos la ejecución.
-    if (!user) {
-      notificationStore.showNotification({ message: 'No se pudieron cargar los datos del usuario.', color: 'error' });
-      return;
+const totalGravadaSinIva = computed(() => {
+  return form.value.items.reduce((acc, item) => {
+    if (!item.esExento) {
+      const precioSinIva = parseFloat(item.precio_unitario) / 1.13;
+      return acc + (precioSinIva * parseFloat(item.cantidad));
     }
-
-    // 3. AHORA usamos esta constante 'user' local, que GARANTIZADO tiene los datos frescos.
-    //    Esto elimina TODA la duplicación y el código confuso.
-    puntosDeVentaPermitidos.value = user.puntos_de_venta_permitidos || [];
-    
-    if (user.default_punto_de_venta) {
-      form.value.punto_de_venta_id = user.default_punto_de_venta.id;
-    } else if (puntosDeVentaPermitidos.value.length > 0) {
-      form.value.punto_de_venta_id = puntosDeVentaPermitidos.value[0].id;
-    }
-
-    // 4. Cargamos el resto de los datos necesarios.
-    const { $api } = useNuxtApp();
-    const [types, fetchedLocations] = await Promise.all([
-      $api('/api/document-types'),
-      $api('/api/locations')
-    ]);
-    documentTypes.value = types;
-    locations.value = fetchedLocations;
-    
-    // ... Tu lógica para VFP (si aplica) puede ir aquí ...
-
-  } catch (err) {
-    notificationStore.showNotification({ message: 'Error al inicializar la página.', color: 'error' });
-  } finally {
-    initialLoading.value = false;
-  }
+    return acc;
+  }, 0);
 });
-// watch(() => form.value.tipo_dte, (newType) => {
-//   // Definimos una lista de los DTEs que no pueden usar un cliente genérico.
-//   const requiresSpecificClient = ['03', '04', '05']; // CCFE, Nota de Remisión, Nota de Crédito
 
-//   // Si el nuevo tipo de documento REQUIERE un cliente específico...
-//   if (requiresSpecificClient.includes(newType)) {
-//     // ...limpiamos la selección actual para forzar al usuario a buscar uno.
-//     form.value.cliente = null;
-//   } else {
-//     // ...si NO lo requiere (como la Factura '01'), seleccionamos el cliente genérico.
-//     form.value.cliente = genericClient.value;
-//   }
-// });
+// 2. ¿Se debe APLICAR la retención? (100% automático)
+const aplicaRetencion = computed(() => {
+    // Si no hay cliente, no aplica.
+    if (!form.value.cliente) return false;
 
-// --- OBSERVADORES (WATCHERS) ---
+    // Se evalúan las 3 reglas de negocio en orden.
+    const esDteAplicable = ['01', '03'].includes(form.value.tipo_dte);
+    const esGranContribuyente = form.value.cliente.categoria_contribuyente === 'GRANDE';
+    const montoAplica = totalGravadaSinIva.value >= 100;
+
+    // Devuelve true solo si se cumplen TODAS las condiciones.
+    return esDteAplicable && esGranContribuyente && montoAplica;
+});
+
+// 3. ¿Cuál es el MONTO de la retención a calcular?
+const ivaRetenidoCalculado = computed(() => {
+  // Si la computada anterior es false, el resultado es 0.
+  if (!aplicaRetencion.value) {
+    return 0;
+  }
+  // Si aplica, calcula el 1% sobre la base gravada sin IVA.
+  return parseFloat((totalGravadaSinIva.value * 0.01).toFixed(2));
+});
+
+// 4. ¿Cuál es el TOTAL A PAGAR final que ve el usuario?
+const totalAPagar = computed(() => {
+    // Simplemente resta el monto retenido (que será 0 si no aplica) del total.
+    return subtotales.value.total - ivaRetenidoCalculado.value;
+});
+
+// ===================================================================
+// === FIN LÓGICA FISCAL ===
+// ===================================================================
+
+
+// --- PROPIEDADES COMPUTADAS GENERALES ---
+const subtotales = computed(() => {
+  const total = form.value.items.reduce((acc, item) => acc + (item.cantidad * item.precio_unitario), 0);
+  
+  if (total === 0) {
+    return { subTotal: 0, iva: 0, total: 0 };
+  }
+
+  const baseImponible = total / 1.13;
+  const iva = total - baseImponible;
+  
+  return { subTotal: baseImponible, iva: iva, total: total };
+});
+
+const precioUnitarioLabel = computed(() => 'Precio Unitario (con IVA)');
+
+const filteredMunicipios = computed(() => {
+  if (!dialog.value.newClient.direccion.departamento) return [];
+  const selectedDept = locations.value.find(d => d.codigo === dialog.value.newClient.direccion.departamento);
+  return selectedDept ? selectedDept.municipios : [];
+});
+
+const validationErrors = computed(() => {
+  const errors = [];
+  const cliente = form.value.cliente;
+
+  if (!form.value.punto_de_venta_id) {
+    errors.push('Debe seleccionar un punto de venta.');
+  }
+
+  if (!cliente) {
+    errors.push('Debe seleccionar un cliente.');
+  } else {
+    switch (form.value.tipo_dte) {
+      case '03':
+        if (!cliente.nit) errors.push('El cliente debe tener un NIT.');
+        if (!cliente.nrc) errors.push('El cliente debe tener un NRC.');
+        if (!cliente.nombre) errors.push('El cliente debe tener un Nombre o Razón Social.');
+        if (!cliente.cod_actividad) errors.push('El cliente debe tener un Código de Actividad.');
+        if (!cliente.desc_actividad) errors.push('El cliente debe tener una Descripción de Actividad.');
+        if (!cliente.nombre_comercial) errors.push('El cliente debe tener un Nombre Comercial.');
+        if (!cliente.direccion?.complemento) errors.push('El cliente debe tener una Dirección.');
+        if (!cliente.telefono) errors.push('El cliente debe tener un Teléfono.');
+        if (!cliente.correo) errors.push('El cliente debe tener un Correo Electrónico.');
+        break;
+      case '05': case '06':
+        if (!cliente.nit) errors.push('El cliente debe tener un NIT.');
+        if (!cliente.nrc) errors.push('El cliente debe tener un NRC.');
+        if (!cliente.nombre) errors.push('El cliente debe tener un Nombre o Razón Social.');
+        break;
+      case '14':
+        if (!cliente.nombre) errors.push('El cliente debe tener un Nombre.');
+        if (!cliente.numDocumento) errors.push('El cliente debe tener un Número de Documento.');
+        break;
+    }
+  }
+  
+  if (form.value.tipo_dte === '07') {
+    if (form.value.documentos_retenidos.length === 0) {
+      errors.push('Debe agregar al menos un documento a retener.');
+    }
+  } else {
+    if (form.value.items.length === 0) {
+      errors.push('Debe agregar al menos un ítem al documento.');
+    }
+  }
+
+  const empresaUsaInventario = authStore.user?.empresa?.usa_inventario;
+  if (empresaUsaInventario && form.value.items.length > 0) {
+    const hayItemsLibres = form.value.items.some(item => !item.codigo);
+    if (hayItemsLibres) {
+      errors.push('Cuando el inventario está activado, todos los ítems deben ser seleccionados del catálogo.');
+    }
+  }
+
+  return errors;
+});
+
+// --- WATCHERS ---
 watch(searchTerm, (newVal) => {
-  // Si la bandera está arriba (porque se está seleccionando un item),
-  // la bajamos y nos detenemos para no volver a buscar.
-  if (isSelecting.value) {
-    isSelecting.value = false;
-    return;
-  }
-
-  // Limpiamos cualquier búsqueda anterior que estuviera en espera.
   clearTimeout(searchTimeout);
-
-  // Verificamos si ya hay un cliente seleccionado y si el texto coincide con su nombre.
-  // Si es así, no hacemos nada para evitar búsquedas innecesarias.
   if (form.value.cliente && newVal === form.value.cliente.nombre) {
     return;
   }
-
-  // ✅ --- LA CORRECCIÓN CLAVE ---
-  // Si el término de búsqueda tiene 2 o más caracteres, programamos la búsqueda.
   if (newVal && newVal.length >= 2) {
     searchTimeout = setTimeout(() => {
       fetchClients(newVal);
     }, 500);
-  } 
-  // Si el término es muy corto o nulo, limpiamos los resultados.
-  else {
+  } else {
     searchResults.value = [];
   }
 });
@@ -776,7 +878,6 @@ watch(() => dialog.value.newClient.direccion.departamento, () => {
 
 watch(searchTermDoc, (newVal) => {
   if (form.value.documento_relacionado && newVal === form.value.documento_relacionado.numero_control) return;
-
   clearTimeout(searchTimeoutDoc);
   if (newVal && newVal.length >= 3) {
     searchTimeoutDoc = setTimeout(() => fetchDocuments(newVal), 500);
@@ -797,7 +898,6 @@ watch(mandanteSearchTerm, (newVal) => {
     mandanteSearchTimeout = setTimeout(async () => {
       mandanteSearchLoading.value = true;
       try {
-        // Usamos el buscador de clientes general. ¡Cualquier cliente puede ser un tercero!
         const response = await $api(`/api/clients/search?term=${newVal}`);
         mandanteResults.value = response.data;
       } finally {
@@ -814,130 +914,172 @@ watch(() => form.value.condicion_operacion, (newCondition) => {
     }
 });
 
-async function fetchDocuments(term) {
-  searchLoadingDoc.value = true;
+watch(() => form.value.cliente, (newClient) => {
+    // Cuando el cliente cambia, DESTRUIMOS el objeto 'newItem' anterior
+    // y lo REEMPLAZAMOS por uno nuevo. Esto fuerza una actualización visual completa.
+    newItem.value = {
+      descripcion: '',
+      cantidad: 1,
+      precio_unitario: 0,
+      tipoItem: 1,
+      uniMedida: 59,
+      codigo: null,
+      // El nuevo objeto se crea desde cero con el estado de exención correcto.
+      esExento: newClient?.es_exento || false,
+    };
+}, { deep: true });
+
+
+// --- MÉTODOS ---
+
+onMounted(async () => {
+    initialLoading.value = true;
+    try {
+        const user = await authStore.fetchUser();
+        if (!user) {
+            notificationStore.showNotification({ message: 'No se pudieron cargar los datos del usuario.', color: 'error' });
+            return;
+        }
+        puntosDeVentaPermitidos.value = user.puntos_de_venta_permitidos || [];
+        if (user.default_punto_de_venta) {
+            form.value.punto_de_venta_id = user.default_punto_de_venta.id;
+        } else if (puntosDeVentaPermitidos.value.length > 0) {
+            form.value.punto_de_venta_id = puntosDeVentaPermitidos.value[0].id;
+        }
+        const [types, fetchedLocations] = await Promise.all([
+            $api('/api/document-types'),
+            $api('/api/locations')
+        ]);
+        documentTypes.value = types;
+        locations.value = fetchedLocations;
+    } catch (err) {
+        notificationStore.showNotification({ message: 'Error al inicializar la página.', color: 'error' });
+    } finally {
+        initialLoading.value = false;
+    }
+});
+
+function addItem() {
+    if (clienteEsExentoGlobal.value) {
+        newItem.value.esExento = true;
+    }
+    const desc = newItem.value.descripcion || '';
+    if (desc.trim() === '' || newItem.value.cantidad <= 0 || newItem.value.precio_unitario <= 0) {
+        notificationStore.showNotification({
+            message: 'La descripción, cantidad y precio deben ser mayores a cero.',
+            color: 'warning'
+        });
+        return;
+    }
+    form.value.items.push({ ...newItem.value });
+    newItem.value = { 
+        descripcion: '', 
+        cantidad: 1, 
+        precio_unitario: 0, 
+        tipoItem: 1, 
+        uniMedida: 59,
+        esExento: clienteEsExentoGlobal.value, 
+        codigo: null
+    };
+}
+
+function removeItem(index) {
+  form.value.items.splice(index, 1);
+}
+
+async function submitDTE() {
+  loading.value = true;
+  error.value = null;
+
   try {
-    const { $api } = useNuxtApp();
-    // Este endpoint lo crearemos en el backend en un momento
-    const response = await $api(`/api/invoices/search-for-credit-note?term=${term}`);
-    searchResultsDoc.value = response; // Asumimos que la API devuelve un array directamente
-  } catch (e) {
-    notificationStore.showNotification({ message: 'Error al buscar documentos.', color: 'error' });
+    const payload = { ...form.value };
+
+    payload.iva_retenido = ivaRetenidoCalculado.value;
+
+    if (payload.cliente) {
+      const clienteSnakeCase = {};
+      for (const key in payload.cliente) {
+        const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+        clienteSnakeCase[snakeKey] = payload.cliente[key];
+      }
+      payload.cliente = clienteSnakeCase;
+    }
+
+    if (['05', '06'].includes(payload.tipo_dte) && form.value.documento_relacionado) {
+        const docRel = form.value.documento_relacionado;
+        payload.documento_relacionado = {
+            tipoDte: docRel.tipo_dte,
+            codigoGeneracion: docRel.codigo_generacion,
+            fecEmi: docRel.fh_procesamiento.split('T')[0]
+        };
+    }
+
+    if (esVentaTercero.value && mandante.value) {
+      payload.ventaTercero = {
+        nit: mandante.value.nit,
+        nombre: mandante.value.nombre
+      };
+    }
+
+    if (payload.tipo_dte === '07') {
+      payload.documentos_retenidos = form.value.documentos_retenidos;
+    } else {
+      payload.items = form.value.items;
+    }
+    
+    const response = await $api('/api/invoices', {
+      method: 'POST',
+      body: payload,
+    });
+
+    if (response.estado === 'PROCESADO') {
+      resultDialog.value = {
+        show: true, success: true, title: 'Transmisión Exitosa',
+        message: 'El Documento Tributario Electrónico ha sido procesado y aceptado por el Ministerio de Hacienda.',
+        details: `Nº Control: ${response.numeroControl}`
+      };
+    } else if (response.estado === 'CONTINGENCIA' || response.estado === 'CONTINGENCIA_PENDIENTE') {
+      resultDialog.value = {
+        show: true, success: true, title: 'Documento en Contingencia',
+        message: 'No hubo conexión con Hacienda. El documento se guardó correctamente y se enviará de forma automática más tarde.',
+        details: `Nº Control: ${response.numeroControl}`
+      };
+    } else {
+      const errorMsg = response.observaciones ? response.observaciones.join(', ') : 'Respuesta de rechazo no especificada.';
+      resultDialog.value = {
+        show: true, success: false, title: 'Documento Rechazado',
+        message: 'Hacienda rechazó el documento. Por favor, revisa los detalles del error.',
+        details: errorMsg
+      };
+    }
+
+  } catch (err) {
+    let dialogTitle = 'Error de Transmisión';
+    let dialogMessage = 'No se pudo completar la solicitud. Revisa tu conexión o contacta a soporte.';
+    let dialogDetails = err.data?.message || 'No hay detalles adicionales.';
+
+    if (err.data) {
+        const errorData = err.data;
+        if (errorData.custom_user_message) {
+            dialogTitle = '⚠️ Error de Configuración de Ambiente';
+            dialogMessage = 'Se ha detectado un problema con la configuración del ambiente de la empresa:';
+            dialogDetails = errorData.custom_user_message;
+        } else if (errorData.descripcionMsg) {
+            dialogTitle = 'Documento Rechazado por Hacienda';
+            dialogMessage = 'Hacienda ha rechazado el documento por la siguiente razón:';
+            dialogDetails = errorData.descripcionMsg;
+        }
+    }
+
+    resultDialog.value = {
+        show: true, success: false, title: dialogTitle,
+        message: dialogMessage, details: dialogDetails
+    };
   } finally {
-    searchLoadingDoc.value = false;
+    loading.value = false;
   }
 }
 
-// --- PROPIEDADES COMPUTADAS ---
-const filteredMunicipios = computed(() => {
-  if (!dialog.value.newClient.direccion.departamento) return [];
-  const selectedDept = locations.value.find(d => d.codigo === dialog.value.newClient.direccion.departamento);
-  return selectedDept ? selectedDept.municipios : [];
-});
-
-// const precioUnitarioLabel = computed(() => 
-//   form.value.tipo_dte === '01' ? 'Precio Unitario (con IVA)' : 'Precio Unitario (sin IVA)'
-// );
-
-const precioUnitarioLabel = computed(() => 'Precio Unitario (con IVA)');
-
-// const subtotales = computed(() => {
-//   const subTotal = form.value.items.reduce((acc, item) => acc + (item.cantidad * item.precio_unitario), 0);
-//   if (form.value.tipo_dte === '01') {
-//     const total = subTotal;
-//     const baseImponible = total / 1.13;
-//     const iva = total - baseImponible;
-//     return { subTotal: baseImponible, iva: iva, total: total };
-//   } else {
-//     const iva = subTotal * 0.13;
-//     return { subTotal: subTotal, iva: iva, total: subTotal + iva };
-//   }
-// });
-
-const subtotales = computed(() => {
-  // El 'total' es la suma de los precios que el usuario ingresó (que ya incluyen IVA)
-  const total = form.value.items.reduce((acc, item) => acc + (item.cantidad * item.precio_unitario), 0);
-  
-  // Si el total es 0, no hay nada que calcular.
-  if (total === 0) {
-      return { subTotal: 0, iva: 0, total: 0 };
-  }
-
-  // La lógica de desglose es la misma tanto para FE como para CCFE
-  const baseImponible = total / 1.13;
-  const iva = total - baseImponible;
-  
-  return { subTotal: baseImponible, iva: iva, total: total };
-});
-
-const validationErrors = computed(() => {
-  const errors = [];
-  const cliente = form.value.cliente;
-
-  // 1. [TU REGLA] Verifica que se haya seleccionado un Punto de Venta
-  if (!form.value.punto_de_venta_id) {
-    errors.push('Debe seleccionar un punto de venta.');
-  }
-
-  // 2. [TU REGLA] Verifica que se haya seleccionado un Cliente
-  if (!cliente) {
-    errors.push('Debe seleccionar un cliente.');
-  } else {
-    // 3. [TU REGLA] Validaciones detalladas del cliente según el tipo de DTE
-    let isClientDataValid = true; // Asumimos que es válido hasta que se demuestre lo contrario
-    switch (form.value.tipo_dte) {
-      case '03': // Comprobante de Crédito Fiscal (Mantiene validación estricta)
-        if (!cliente.nit) errors.push('El cliente debe tener un NIT.');
-        if (!cliente.nrc) errors.push('El cliente debe tener un NRC.');
-        if (!cliente.nombre) errors.push('El cliente debe tener un Nombre o Razón Social.');
-        if (!cliente.cod_actividad) errors.push('El cliente debe tener un Código de Actividad.');
-        if (!cliente.desc_actividad) errors.push('El cliente debe tener una Descripción de Actividad.');
-        if (!cliente.nombre_comercial) errors.push('El cliente debe tener un Nombre Comercial.');
-        if (!cliente.direccion?.complemento) errors.push('El cliente debe tener una Dirección.');
-        if (!cliente.telefono) errors.push('El cliente debe tener un Teléfono.');
-        if (!cliente.correo) errors.push('El cliente debe tener un Correo Electrónico.');
-        break;
-
-      case '05': // Nota de Crédito
-      case '06': // Nota de Débito (Validación más flexible)
-        // Mantenemos los requisitos básicos
-        if (!cliente.nit) errors.push('El cliente debe tener un NIT.');
-        if (!cliente.nrc) errors.push('El cliente debe tener un NRC.');
-        if (!cliente.nombre) errors.push('El cliente debe tener un Nombre o Razón Social.');
-        // Los campos de actividad ya no son requeridos aquí
-        break;
-
-      case '14': // Factura de Sujeto Excluido
-        if (!cliente.nombre) errors.push('El cliente debe tener un Nombre.');
-        if (!cliente.numDocumento) errors.push('El cliente debe tener un Número de Documento.');
-        break;
-    }
-  }
-  
-  // 4. [TU REGLA] Verifica que haya ítems o documentos retenidos
-  if (form.value.tipo_dte === '07') {
-    if (form.value.documentos_retenidos.length === 0) {
-      errors.push('Debe agregar al menos un documento a retener.');
-    }
-  } else {
-    if (form.value.items.length === 0) {
-      errors.push('Debe agregar al menos un ítem al documento.');
-    }
-  }
-
-  // 5. [NUEVA REGLA] Si el inventario está activado, todos los ítems deben ser del catálogo
-  const empresaUsaInventario = authStore.user?.empresa?.usa_inventario;
-  if (empresaUsaInventario && form.value.items.length > 0) {
-    const hayItemsLibres = form.value.items.some(item => !item.codigo);
-    if (hayItemsLibres) {
-      errors.push('Cuando el inventario está activado, todos los ítems deben ser seleccionados del catálogo.');
-    }
-  }
-
-  return errors;
-});
-
-// --- MÉTODOS ---
 function openDialog() { dialog.value.show = true; }
 
 function closeDialog() {
@@ -952,7 +1094,6 @@ function closeDialog() {
 async function fetchClients(term) {
   searchLoading.value = true;
   try {
-    const { $api } = useNuxtApp();
     const response = await $api(`/api/clients/search?term=${term}`);
     searchResults.value = response.data;
   } catch (e) {
@@ -968,7 +1109,6 @@ async function saveNewClient() {
   }
   dialog.value.loading = true;
   try {
-    const { $api } = useNuxtApp();
     const response = await $api('/api/clients', {
       method: 'POST',
       body: dialog.value.newClient,
@@ -988,224 +1128,46 @@ async function saveNewClient() {
   }
 }
 
-function addItem() {
-  if (!newItem.value.descripcion || newItem.value.cantidad <= 0 || newItem.value.precio_unitario <= 0) {
-    
-    notificationStore.showNotification({
-      message: 'La descripción y el precio deben tener un valor mayor a cero.',
-      color: 'warning'
-    });
-    
-    return; // Detenemos la ejecución
-  }
-  
-  form.value.items.push({ ...newItem.value });
-  
-  // 👇 CORREGIMOS EL RESETEO PARA QUE INCLUYA EL CÓDIGO 👇
-  newItem.value = { 
-    descripcion: '', 
-    cantidad: 1, 
-    precio_unitario: 0, 
-    tipoItem: 1, 
-    uniMedida: 59,
-    esExento: false,
-    codigo: null // <-- Línea añadida
-  };
-}
-
-function removeItem(index) {
-  form.value.items.splice(index, 1);
-}
-
-async function submitDTE() {
-  // Verificación inicial. Si el formulario no es válido, no hacemos nada.
-  // if (!isFormValid.value) {
-  //   notificationStore.showNotification({ message: 'Formulario inválido. Revisa los datos del cliente y los ítems.', color: 'warning' });
-  //   return;
-  // }
-  
-  loading.value = true;
-  error.value = null;
-
+async function fetchDocuments(term) {
+  searchLoadingDoc.value = true;
   try {
-    const { $api } = useNuxtApp();
-    
-    // El payload ahora es una copia directa y limpia del estado del formulario.
-    const payload = { ...form.value };
-
-    if (payload.cliente) {
-      const clienteSnakeCase = {};
-      for (const key in payload.cliente) {
-        // Convierte una llave como "nombreComercial" a "nombre_comercial"
-        const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
-        clienteSnakeCase[snakeKey] = payload.cliente[key];
-      }
-      // Reemplazamos el objeto original por el transformado
-      payload.cliente = clienteSnakeCase;
-    }
-
-    if (['05', '06'].includes(payload.tipo_dte) && form.value.documento_relacionado) {
-        const docRel = form.value.documento_relacionado;
-        payload.documento_relacionado = {
-            tipoDte: docRel.tipo_dte,
-            codigoGeneracion: docRel.codigo_generacion,
-            fecEmi: docRel.fh_procesamiento.split('T')[0] // Extrae solo la fecha YYYY-MM-DD
-        };
-    }
-
-    if (esVentaTercero.value && mandante.value) {
-      payload.ventaTercero = {
-        nit: mandante.value.nit,
-        nombre: mandante.value.nombre
-      };
-    }
-
-    if (payload.tipo_dte === '07') {
-        payload.documentos_retenidos = form.value.documentos_retenidos;
-    } else {
-        payload.items = form.value.items;
-    }
-    
-    // Hacemos la llamada a nuestro backend.
-    const response = await $api('/api/invoices', {
-      method: 'POST',
-      body: payload,
-    });
-
-    // Interpretamos la respuesta de NUESTRO backend.
-    if (response.estado === 'PROCESADO') {
-      resultDialog.value = {
-        show: true,
-        success: true,
-        title: 'Transmisión Exitosa',
-        message: 'El Documento Tributario Electrónico ha sido procesado y aceptado por el Ministerio de Hacienda.',
-        details: `Nº Control: ${response.numeroControl}`
-      };
-    } else if (response.estado === 'CONTINGENCIA' || response.estado === 'CONTINGENCIA_PENDIENTE') {
-      resultDialog.value = {
-        show: true,
-        success: true, // Lo marcamos como éxito para el usuario
-        title: 'Documento en Contingencia',
-        message: 'No hubo conexión con Hacienda. El documento se guardó correctamente y se enviará de forma automática más tarde.',
-        details: `Nº Control: ${response.numeroControl}` // Nota: el campo puede variar
-      };
-    } else {
-      // const errorMsg = response.observaciones ? response.observaciones.join(', ') : 'Respuesta de rechazo no especificada.';
-      // resultDialog.value = {
-      //   show: true,
-      //   success: false,
-      //   title: 'Documento Rechazado',
-      //   message: 'Hacienda rechazó el documento. Por favor, revisa los detalles del error.',
-      //   details: errorMsg
-      // };
-      const errorMsg = response.observaciones ? response.observaciones.join(', ') : 'Respuesta de rechazo no especificada.';
-      resultDialog.value = {
-        show: true, success: false, title: 'Documento Rechazado',
-        message: 'Hacienda rechazó el documento. Por favor, revisa los detalles del error.',
-        details: errorMsg
-      };
-    }
-
-  } catch (err) {
-    // 1. Valores por defecto para un error genérico (de red, servidor caído, etc.)
-    let dialogTitle = 'Error de Transmisión';
-    let dialogMessage = 'No se pudo completar la solicitud. Revisa tu conexión o contacta a soporte.';
-    let dialogDetails = err.data?.message || 'No hay detalles adicionales.';
-
-    // 2. Revisamos si el error viene de nuestro backend con una respuesta estructurada.
-    //    (El objeto 'err.data' contiene la respuesta JSON del error de la API).
-    if (err.data) {
-        const errorData = err.data;
-
-        // ✅ ¡AQUÍ ESTÁ LA LÓGICA CLAVE!
-        // Prioridad #1: Buscamos nuestro mensaje personalizado para el error de ambiente.
-        if (errorData.custom_user_message) {
-            dialogTitle = '⚠️ Error de Configuración de Ambiente';
-            dialogMessage = 'Se ha detectado un problema con la configuración del ambiente de la empresa:';
-            dialogDetails = errorData.custom_user_message; // Usamos nuestro mensaje detallado y amigable.
-        } 
-        // Prioridad #2: Si no hay mensaje personalizado, buscamos el error estándar de Hacienda.
-        else if (errorData.descripcionMsg) {
-            dialogTitle = 'Documento Rechazado por Hacienda';
-            dialogMessage = 'Hacienda ha rechazado el documento por la siguiente razón:';
-            dialogDetails = errorData.descripcionMsg; // Usamos el mensaje genérico de Hacienda.
-        }
-    }
-
-    // 3. Finalmente, mostramos el diálogo con la información más específica que encontramos.
-    resultDialog.value = {
-        show: true,
-        success: false,
-        title: dialogTitle,
-        message: dialogMessage,
-        details: dialogDetails
-    };
+    const response = await $api(`/api/invoices/search-for-credit-note?term=${term}`);
+    searchResultsDoc.value = response;
+  } catch (e) {
+    notificationStore.showNotification({ message: 'Error al buscar documentos.', color: 'error' });
   } finally {
-    // Nos aseguramos de que el estado de carga siempre se desactive.
-    loading.value = false;
-  }
-}
-
-function resetForm() {
-  // Limpiamos la lista de ítems
-  form.value.items = [];
-  
-  // Volvemos a la lógica que define el cliente por defecto
-  const requiresSpecificClient = ['03', '04', '05'];
-  if (!requiresSpecificClient.includes(form.value.tipo_dte)) {
-      form.value.cliente = genericClient.value;
-  } else {
-      form.value.cliente = null;
+    searchLoadingDoc.value = false;
   }
 }
 
 async function handleDocumentoSeleccionado(selectedDoc) {
-  // Si el usuario borra la selección, limpiamos el formulario
   if (!selectedDoc) {
-    form.value.cliente = null; // Volvemos al cliente genérico o null
+    form.value.cliente = null;
     form.value.items = [];
     return;
   }
-
-  loading.value = true; // Activa el indicador de carga del formulario
+  loading.value = true;
   try {
-    const { $api } = useNuxtApp();
-    // Llamamos al nuevo endpoint que creamos en Laravel
     const originalDte = await $api(`/api/invoices/${selectedDoc.codigo_generacion}`);
-
-    // 1. Autocompletamos el cliente con los datos del receptor del DTE original
-    // form.value.cliente = originalDte.json_enviado.receptor;
     form.value.cliente = originalDte.receptor;
-
-    // 2. Autocompletamos los ítems
-    // Mapeamos los ítems del CCFE original al formato que necesita nuestro formulario
     form.value.items = originalDte.cuerpoDocumento.map(item => {
-      
-      // a. Determinamos si el ítem original era exento
       const eraExento = item.ventaExenta > 0;
-
-      // b. Calculamos el precio unitario final (con IVA si aplica)
       const precioUnitarioParaForm = eraExento
-        ? item.precioUni // Si era exento, el precio es el mismo
-        : parseFloat((item.precioUni * 1.13).toFixed(5)); // Si era gravado, le agregamos el IVA de vuelta
-
-      // c. Devolvemos el objeto completo para el formulario
+        ? item.precioUni
+        : parseFloat((item.precioUni * 1.13).toFixed(5));
       return {
         descripcion: item.descripcion,
         cantidad: item.cantidad,
-        precio_unitario: precioUnitarioParaForm, // <-- Precio corregido
+        precio_unitario: precioUnitarioParaForm,
         codigo: item.codigo,
         tipoItem: item.tipoItem,
         uniMedida: item.uniMedida,
-        esExento: eraExento, // <-- Campo 'esExento' añadido
+        esExento: eraExento,
       };
     });
-
     notificationStore.showNotification({ message: 'Cliente e ítems cargados desde el CCFE original.', color: 'info' });
-
   } catch (error) {
     notificationStore.showNotification({ message: 'No se pudieron cargar los detalles del documento seleccionado.', color: 'error' });
-    // Limpiamos los campos en caso de error para evitar inconsistencias
     form.value.cliente = null;
     form.value.items = [];
   } finally {
@@ -1214,15 +1176,11 @@ async function handleDocumentoSeleccionado(selectedDoc) {
 }
 
 function agregarDocumentoRetenido() {
-  // Validación simple
   if (!nuevoDocRetenido.value.numeroDocumento || !nuevoDocRetenido.value.montoSujetoGrav) {
     notificationStore.showNotification({ message: 'Debe rellenar al menos el número de documento y el monto.', color: 'warning' });
     return;
   }
-
   form.value.documentos_retenidos.push({ ...nuevoDocRetenido.value });
-
-  // Limpiar para el siguiente
   nuevoDocRetenido.value = {
     tipoDte: '03',
     tipoDoc: 2,
@@ -1239,18 +1197,15 @@ function eliminarDocumentoRetenido(index) {
 
 function closeResultDialog() {
   const wasSuccess = resultDialog.value.success;
-  resultDialog.value.show = false; // Siempre oculta el diálogo
-
+  resultDialog.value.show = false;
   if (wasSuccess) {
-    // Solo redirigimos o reseteamos el form si fue un éxito
     router.push('/historial');
   }
-  // Si fue un error, no hacemos nada más. El usuario se queda en la página.
 }
 
 function retrySubmit() {
-  resultDialog.value.show = false; // Cierra el diálogo de error
-  submitDTE(); // Vuelve a intentar la misma sumisión
+  resultDialog.value.show = false;
+  submitDTE();
 }
 
 function getUnidadMedidaNombre(value) {
@@ -1263,10 +1218,7 @@ async function searchProducts(query) {
     searchedProducts.value = [];
     return;
   }
-  
   isSearching.value = true;
-
-  // Evita hacer una petición a la API en cada tecla que se presiona
   clearTimeout(searchTimeout);
   searchTimeout = setTimeout(async () => {
     try {
@@ -1277,35 +1229,26 @@ async function searchProducts(query) {
     } finally {
       isSearching.value = false;
     }
-  }, 500); // Espera 500ms
+  }, 500);
 }
 
 function productSelected(value) {
-  // Caso 1: El usuario seleccionó un PRODUCTO (es un objeto)
+  // Caso 1: Se seleccionó un PRODUCTO del catálogo (es un objeto)
   if (typeof value === 'object' && value !== null) {
-    // Lógica para autocompletar los campos del producto
     newItem.value.descripcion = value.nombre;
     newItem.value.precio_unitario = parseFloat(value.precio_unitario);
     newItem.value.codigo = value.codigo;
-    console.log(value.es_exento_de_iva);
-    
-    newItem.value.esExento = !!value.es_exento_de_iva;
+    // LÓGICA CLAVE: El ítem es exento si el CLIENTE lo es, O si el PRODUCTO lo es.
+    newItem.value.esExento = clienteEsExentoGlobal.value || !!value.es_exento_de_iva;
   } 
-  // Caso 2: El usuario está escribiendo TEXTO LIBRE (es un string)
-  else if (typeof value === 'string') {
-    // Si el usuario escribe, reseteamos los valores a su estado por defecto.
-    newItem.value.descripcion = value;
-    newItem.value.codigo = null;
-    newItem.value.precio_unitario = 0;
-    newItem.value.esExento = false; // <-- Reseteamos el checkbox
-  }
-  // Caso 3: El usuario limpió el campo por completo
+  // Caso 2: Se está escribiendo TEXTO LIBRE o se limpió el campo
   else {
-    // Si se limpia el campo, también reseteamos todo.
-    newItem.value.descripcion = '';
+    newItem.value.descripcion = value || '';
     newItem.value.codigo = null;
     newItem.value.precio_unitario = 0;
-    newItem.value.esExento = false; // <-- Reseteamos el checkbox
+    // Al escribir o limpiar, la exención depende únicamente del estado del cliente.
+    newItem.value.esExento = clienteEsExentoGlobal.value;
   }
 }
+
 </script>
