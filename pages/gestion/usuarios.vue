@@ -24,7 +24,16 @@
                   density="compact"
                 ></v-text-field>
               </v-col>
-              <v-col cols="12">
+              <v-col cols="6">
+                <v-text-field
+                v-model="editedItem.username"
+                label="Nombre de Usuario*"
+                :rules="[rules.required]"
+                variant="outlined"
+                density="compact"
+              ></v-text-field>
+              </v-col>
+              <v-col cols="6">
                 <v-text-field
                   v-model="editedItem.email"
                   label="Correo Electrónico*"
@@ -183,6 +192,7 @@ const deleteDialog = ref({ show: false, loading: false, user: null });
 const defaultItem = {
   id: null,
   name: '',
+  username: '',
   email: '',
   password: '',
   password_confirmation: '',
@@ -198,6 +208,7 @@ const form = ref(null); // Referencia al v-form
 
 const headers = [
   { title: 'Nombre', key: 'name' },
+  { title: 'Username', key: 'username' },
   { title: 'Correo Electrónico', key: 'email' },
   { title: 'Rol', key: 'roles' },
   { title: 'Puntos de Venta', key: 'puntos_de_venta', sortable: false },
@@ -250,6 +261,7 @@ function openEditDialog(item) {
   editedItem.value = {
     id: item.id,
     name: item.name,
+    username: item.username,
     email: item.email,
     role: item.roles[0]?.name || null,
     punto_de_venta_ids: extractPosIds(item.permissions),
