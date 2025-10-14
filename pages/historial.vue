@@ -671,7 +671,6 @@ function clearFilters() {
 async function exportToExcel() {
   exportLoading.value = true;
   try {
-    // Prepara los parámetros de los filtros
     const params = new URLSearchParams();
     if (filters.value.searchTerm) params.append('search', filters.value.searchTerm);
     if (filters.value.estado) params.append('estado', filters.value.estado);
@@ -680,27 +679,35 @@ async function exportToExcel() {
     if (filters.value.fecha_fin) params.append('fecha_fin', filters.value.fecha_fin);
 
     const { $api } = useNuxtApp();
-    
-    // Apunta a la URL final y correcta
     const url = `/api/invoices/export?${params.toString()}`;
     
-    // Pide el archivo como 'blob'
-    const blob = await $api(url, { responseType: 'blob' });
+    const response = await $api.raw(url, { responseType: 'blob' });
+    const blob = response._data;
+
+    const disposition = response.headers.get('content-disposition');
+    let fileName = `dtes_exportados_${new Date().toISOString().slice(0, 10)}.xlsx`; // Fallback
     
-    // Crea un enlace temporal para iniciar la descarga
+    if (disposition && disposition.includes('attachment')) {
+        const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+        const matches = filenameRegex.exec(disposition);
+        if (matches != null && matches[1]) {
+          // Si la cabecera se pudo leer, usamos el nombre del servidor.
+          fileName = matches[1].replace(/['"]/g, '');
+        }
+    }
+
     const objectUrl = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = objectUrl;
-    link.download = `dtes_exportados_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    link.download = fileName; 
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(objectUrl);
     
   } catch (error) {
-    // Manejo de error para el usuario
     console.error("Error al exportar:", error);
-    notificationStore.showNotification({ message: 'No se pudo generar el archivo Excel. Verifique los filtros.', color: 'error' });
+    notificationStore.showNotification({ message: 'No se pudo generar el archivo Excel.', color: 'error' });
   } finally {
     exportLoading.value = false;
   }
