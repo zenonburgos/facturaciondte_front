@@ -567,7 +567,8 @@ onMounted(async () => {
     // Opcional: Limpiamos el query de la URL para que no quede "pegado"
     // router.replace({ query: { ...route.query, month: undefined } });
   }
-  await loadItems();
+  // La llamada a loadItems() se ha eliminado.
+  // La tabla se cargará automáticamente a través del evento @update:options
 });
 
 function loadItemsWithOptions(newOptions) {
@@ -1057,3 +1058,4 @@ async function reenviarCorreo(item) {
   opacity: 1;
 }
 </style>
+
