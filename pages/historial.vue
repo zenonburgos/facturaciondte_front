@@ -148,10 +148,7 @@
         >
           <v-icon start>mdi-whatsapp</v-icon>
           <span class="d-none d-sm-inline">WhatsApp</span>
-        </v-btn>
-        
-        
-        
+        </v-btn>        
         <v-btn
           v-if="jsonDialog.item?.estado === 'PROCESADO'"
           color="error"
@@ -299,28 +296,39 @@
           <span>{{ getDteName(item.tipo_dte) }}</span>
         </v-tooltip>
       </template>
-        
-        <template v-slot:item.codigo_generacion="{ item }">
-          <div class="d-flex align-center">
-            <v-tooltip location="top">
-              <template v-slot:activator="{ props }">
-                <span v-bind="props" class="font-weight-bold text-blue-grey-darken-1 mr-1">
-                  {{ item.codigo_generacion.slice(0, 8) }}...
-                </span>
-              </template>
-              <span>{{ item.codigo_generacion }}</span>
-            </v-tooltip>
-            <v-btn
-              icon="mdi-content-copy"
-              variant="text"
-              color="grey"
-              size="x-small"
-              @click="copyToClipboard(item.codigo_generacion)"
-              title="Copiar Código"
-            ></v-btn>
+      <template v-slot:item.numero_control="{ item }">
+          <div>
+            <span class="font-weight-medium">{{ item.numero_control }}</span>
+            <div class="d-flex align-center text-caption text-grey-darken-1 mt-1">
+              <v-tooltip location="top">
+                <template v-slot:activator="{ props }">
+                  <span v-bind="props">
+                    {{ item.codigo_generacion }}
+                  </span>
+                </template>
+                <span>{{ item.codigo_generacion }}</span>
+              </v-tooltip>
+              <v-btn
+                icon="mdi-content-copy"
+                variant="text"
+                color="grey"
+                size="x-small"
+                class="ml-1"
+                @click="copyToClipboard(item.codigo_generacion)"
+                title="Copiar Código de Generación"
+              ></v-btn>
+            </div>
           </div>
         </template>
-
+        <!-- ✨ NUEVO SLOT PARA MOSTRAR EL CLIENTE ✨ -->
+        <template v-slot:item.receptor_nombre="{ item }">
+          <div>
+            <span class="font-weight-medium">{{ item.receptor_nombre || 'N/A' }}</span>
+            <div v-if="item.receptor_documento" class="text-caption text-grey-darken-1">
+              {{ item.receptor_documento }}
+            </div>
+          </div>
+        </template>
         <!-- <template v-slot:item.subtotal="{ item }">
           <span>${{ item.subtotal?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span>
         </template>
@@ -520,14 +528,12 @@ const jsonDialog = ref({ show: false, content: '', data: null, item: null });
 
 const headers = [
   { title: 'Tipo', key: 'tipo_dte', sortable: false },
-  { title: 'Número de Control', key: 'numero_control', sortable: false },
-  { title: 'Código Generación', key: 'codigo_generacion', sortable: false },
-  { title: 'Estado', key: 'estado' },
-  // { title: 'Subtotal', key: 'subtotal', align: 'end', sortable: true },
-  // { title: 'IVA', key: 'iva', align: 'end', sortable: true },
+  { title: 'Control / Generación', key: 'numero_control', sortable: false },
+  { title: 'Cliente', key: 'receptor_nombre', sortable: true },
+  { title: 'Estado', key: 'estado', sortable: true },
   { title: 'Montos', key: 'montos', align: 'end', sortable: false },
   { title: 'Total', key: 'total', align: 'end', sortable: true },
-  { title: 'Fecha Procesamiento', key: 'fh_procesamiento' },
+  { title: 'Fecha Emisión', key: 'fecha_emision', sortable: true },
   { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
 ];
 
