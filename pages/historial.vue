@@ -529,8 +529,8 @@ const jsonDialog = ref({ show: false, content: '', data: null, item: null });
 const headers = [
   { title: 'Tipo', key: 'tipo_dte', sortable: false },
   { title: 'Control / Generación', key: 'numero_control', sortable: false },
-  { title: 'Cliente', key: 'receptor_nombre', sortable: true },
-  { title: 'Estado', key: 'estado', sortable: true },
+  { title: 'Cliente', key: 'receptor_nombre', sortable: true, width: '25%' },
+  { title: 'Estado', key: 'estado', sortable: true, width: '100px' },
   { title: 'Montos', key: 'montos', align: 'end', sortable: false },
   { title: 'Total', key: 'total', align: 'end', sortable: true },
   { title: 'Fecha Procesamiento', key: 'fh_procesamiento', sortable: true },

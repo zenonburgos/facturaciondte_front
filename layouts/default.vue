@@ -90,6 +90,13 @@
                 value="productos"
                 to="/gestion/productos"
               ></v-list-item>
+              <v-list-item
+                v-if="userHasRole(['Admin', 'Super Administrador'])"
+                prepend-icon="mdi-archive-arrow-down-outline"
+                title="Centro de Archivos"
+                value="exportaciones"
+                to="/admin/exportaciones"
+              ></v-list-item>
             </template>
           </v-list>
         </v-navigation-drawer>
