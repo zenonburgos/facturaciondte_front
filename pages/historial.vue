@@ -533,7 +533,7 @@ const headers = [
   { title: 'Estado', key: 'estado', sortable: true },
   { title: 'Montos', key: 'montos', align: 'end', sortable: false },
   { title: 'Total', key: 'total', align: 'end', sortable: true },
-  { title: 'Fecha Emisión', key: 'fecha_emision', sortable: true },
+  { title: 'Fecha Procesamiento', key: 'fh_procesamiento', sortable: true },
   { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
 ];
 
