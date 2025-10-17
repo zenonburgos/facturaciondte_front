@@ -62,8 +62,24 @@
 
           <v-list nav :disabled="isUIBlocked">
             <v-list-item prepend-icon="mdi-view-dashboard" title="Dashboard" value="dashboard" to="/"></v-list-item>
-            <v-list-item prepend-icon="mdi-plus-box" title="Emitir DTE" value="emitir" to="/emitir"></v-list-item>
-            <v-list-item prepend-icon="mdi-history" title="Historial" value="historial" to="/historial"></v-list-item>
+            <v-list-item 
+              title="Emitir DTE" 
+              value="emitir" 
+              to="/emitir"
+            >
+              <template v-slot:prepend>
+                <v-icon color="green">mdi-plus-box</v-icon>
+              </template>
+            </v-list-item>
+            <v-list-item 
+              title="Historial" 
+              value="historial" 
+              to="/historial"
+            >
+              <template v-slot:prepend>
+                <v-icon color="cyan">mdi-history</v-icon>
+              </template>
+            </v-list-item>
 
             <template v-if="userHasRole(['Admin', 'Encargado de Negocio', 'Cajero'])">
               <v-divider class="my-2"></v-divider>
@@ -71,32 +87,44 @@
               
               <v-list-item
                 v-if="userHasRole(['Admin', 'Encargado de Negocio'])"
-                prepend-icon="mdi-account-group"
                 title="Gestión de Usuarios"
                 value="usuarios"
                 to="/gestion/usuarios"
-              ></v-list-item>
+              >
+                <template v-slot:prepend>
+                  <v-icon color="light-green">mdi-account-group</v-icon>
+                </template>
+              </v-list-item>
               <v-list-item
                 v-if="userHasRole(['Admin', 'Encargado de Negocio', 'Cajero'])"
-                prepend-icon="mdi-account-supervisor-circle"
                 title="Gestión de Clientes"
                 value="clientes"
                 to="/gestion/clientes"
-              ></v-list-item>
+              >
+                <template v-slot:prepend>
+                  <v-icon color="indigo">mdi-account-supervisor-circle</v-icon>
+                </template>
+              </v-list-item>
               <v-list-item
                 v-if="userHasRole(['Admin', 'Encargado de Negocio']) && authStore.getActiveTenant?.usa_inventario"
-                prepend-icon="mdi-package-variant-closed"
                 title="Gestión de Productos"
                 value="productos"
                 to="/gestion/productos"
-              ></v-list-item>
+              >
+                <template v-slot:prepend>
+                  <v-icon color="teal">mdi-package-variant-closed</v-icon>
+                </template>
+              </v-list-item>
               <v-list-item
                 v-if="userHasRole(['Admin', 'Super Administrador'])"
-                prepend-icon="mdi-archive-arrow-down-outline"
-                title="Centro de Archivos"
+                title="Exportaciones Masivas"
                 value="exportaciones"
                 to="/admin/exportaciones"
-              ></v-list-item>
+              >
+                <template v-slot:prepend>
+                  <v-icon color="primary">mdi-archive-arrow-down-outline</v-icon>
+                </template>
+              </v-list-item>
             </template>
           </v-list>
         </v-navigation-drawer>
