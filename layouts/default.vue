@@ -117,7 +117,7 @@
               </v-list-item>
               <v-list-item
                 v-if="userHasRole(['Admin', 'Super Administrador'])"
-                title="Exportaciones Masivas"
+                title="Centro de Archivos"
                 value="exportaciones"
                 to="/admin/exportaciones"
               >
