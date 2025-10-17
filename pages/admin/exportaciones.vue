@@ -49,6 +49,32 @@
           </v-col>
         </v-row>
         
+        <!-- ✨ NUEVO CAMPO PARA BUSCAR CLIENTE ✨ -->
+        <v-row>
+            <v-col cols="12">
+                <v-autocomplete
+                  v-model="filters.cliente_id"
+                  v-model:search="clienteSearch"
+                  :items="clientesResultados"
+                  item-title="nombre"
+                  item-value="id"
+                  label="Buscar Cliente (Opcional)"
+                  density="compact"
+                  variant="outlined"
+                  :loading="clientesLoading"
+                  clearable
+                  no-filter
+                  :disabled="!filters.empresa_id || filters.empresa_id === 'all'"
+                  hint="Disponible solo al seleccionar una empresa. Escriba para buscar."
+                  persistent-hint
+                >
+                    <template v-slot:item="{ props, item }">
+                        <v-list-item v-bind="props" :title="item.raw.nombre" :subtitle="item.raw.nit || item.raw.num_documento"></v-list-item>
+                    </template>
+                </v-autocomplete>
+            </v-col>
+        </v-row>
+
         <v-alert
           v-if="errorMessage"
           type="error"
@@ -77,14 +103,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useAuthStore } from '~/stores/auth';
 import { useNotificationStore } from '~/stores/notifications';
 
 const authStore = useAuthStore();
 const notificationStore = useNotificationStore();
 const { $api } = useNuxtApp();
-
 const config = useRuntimeConfig();
 
 const loading = ref(false);
@@ -95,16 +120,22 @@ const filters = ref({
   fecha_inicio: null,
   fecha_fin: null,
   empresa_id: null,
+  cliente_id: null, // Se añade el filtro de cliente
 });
 
 const empresas = ref([]);
+const isAdmin = computed(() => userHasRole(['Super Administrador']));
+
+// --- Estado para la búsqueda de clientes ---
+const clienteSearch = ref('');
+const clientesResultados = ref([]);
+const clientesLoading = ref(false);
+let clienteDebounceTimer = null;
 
 const userHasRole = (requiredRoles) => {
   if (!authStore.user || !Array.isArray(authStore.user.roles)) return false;
   return requiredRoles.some(role => authStore.user.roles.includes(role));
 };
-
-const isAdmin = computed(() => userHasRole(['Super Administrador']));
 
 onMounted(async () => {
   try {
@@ -123,6 +154,32 @@ onMounted(async () => {
   }
 });
 
+// Observador para la búsqueda de clientes
+watch(clienteSearch, (newValue) => {
+    if (clientesLoading.value) return;
+    if (!newValue || newValue.length < 2) {
+        clientesResultados.value = [];
+        return;
+    }
+    fetchClientes(newValue);
+});
+
+// Función para buscar clientes con debounce
+const fetchClientes = (searchTerm) => {
+    clearTimeout(clienteDebounceTimer);
+    clienteDebounceTimer = setTimeout(async () => {
+        clientesLoading.value = true;
+        try {
+            const response = await $api(`/api/clients/search-for-export?term=${searchTerm}&empresa_id=${filters.value.empresa_id}`);
+            clientesResultados.value = response;
+        } catch (error) {
+            notificationStore.showNotification({ message: 'Error al buscar clientes.', color: 'error'});
+        } finally {
+            clientesLoading.value = false;
+        }
+    }, 500);
+};
+
 async function exportarJson() {
   loading.value = true;
   errorMessage.value = '';
@@ -133,6 +190,10 @@ async function exportarJson() {
     });
     if (filters.value.empresa_id) {
       params.append('empresa_id', filters.value.empresa_id);
+    }
+    // Se añade el cliente_id a los parámetros si está seleccionado
+    if (filters.value.cliente_id) {
+      params.append('cliente_id', filters.value.cliente_id);
     }
 
     const url = `${config.public.apiBaseUrl}/api/export/signed-json?${params.toString()}`;
@@ -145,7 +206,6 @@ async function exportarJson() {
     });
 
     if (!response.ok) {
-      // Intentamos leer el error del backend si es posible
       const errorData = await response.json().catch(() => ({ error: `Error del servidor: ${response.statusText}` }));
       throw new Error(errorData.error || 'Error desconocido en el servidor.');
     }
@@ -156,7 +216,7 @@ async function exportarJson() {
     link.href = objectUrl;
 
     const disposition = response.headers.get('content-disposition');
-    let fileName = `exportacion_dte_firmados_${new Date().toISOString().slice(0, 10)}.zip`;
+    let fileName = `exportacion_dte_firmados.zip`;
     if (disposition && disposition.includes('attachment')) {
         const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
         const matches = filenameRegex.exec(disposition);
@@ -172,14 +232,10 @@ async function exportarJson() {
     window.URL.revokeObjectURL(objectUrl);
 
   } catch (error) {
-    console.error("Error al exportar JSONs:", error);
     const friendlyMessage = error.message || 'No se pudo generar el archivo .zip. Revise los filtros o intente con un rango de fechas más pequeño.';
     errorMessage.value = friendlyMessage;
-    // Ya no mostramos la notificación genérica, el v-alert es suficiente.
-    // notificationStore.showNotification({ message: friendlyMessage, color: 'error' });
   } finally {
     loading.value = false;
   }
 }
 </script>
-
