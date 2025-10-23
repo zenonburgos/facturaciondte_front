@@ -59,10 +59,14 @@
             <v-row>
                 <v-col cols="12" md="4">
                     <v-select
-                        label="Otro Tipo de Documento"
-                        v-model="editedItem.tipo_documento"
-                        :items="[{title:'DUI', value:'13'}, {title:'Pasaporte', value:'03'}, {title:'Otro', value:'37'}]"
-                        clearable
+                      label="Tipo de Documento"
+                      v-model="editedItem.tipo_documento"
+                      :items="[
+                          {title:'DUI', value:'13'}, 
+                          {title:'Pasaporte', value:'03'}, 
+                          {title:'NIT', value:'36'},  {title:'Otro', value:'37'}
+                      ]"
+                      clearable
                     ></v-select>
                 </v-col>
                 <v-col cols="12" md="4">
@@ -254,6 +258,19 @@ const filteredMunicipios = computed(() => {
   return selectedDept ? selectedDept.municipios : [];
 });
 
+watch(
+  // 1. La variable que vamos a vigilar:
+  () => editedItem.value.tipo_documento, 
+  
+  // 2. La función que se ejecutará cuando cambie:
+  (newDocType) => {
+    // Si el usuario selecciona 'NIT' en el dropdown...
+    if (newDocType === '36') {
+      // ...copiamos el valor del campo NIT al campo del número de documento.
+      editedItem.value.num_documento = editedItem.value.nit;
+    }
+  }
+);
 
 watch(actividadSearchTerm, (newVal) => {
     // Si el texto de búsqueda es el de la actividad ya seleccionada, no hacemos nada.
