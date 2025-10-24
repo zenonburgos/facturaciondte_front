@@ -273,193 +273,171 @@
         :loading="loading"
         @update:options="loadItemsWithOptions"
         :row-props="getRowProps"
+        show-expand
+        v-model:expanded="expandedItems"
+        density="compact"
       >
-      <template v-slot:no-data>
-        <div class="pa-4 text-center">
-          <v-icon size="x-large" color="grey-lighten-1" class="mb-2">mdi-magnify-remove-outline</v-icon>
-          <h4 class="text-grey-darken-1">No se encontraron resultados</h4>
-          <p class="text-grey-darken-2 text-body-2">Intente ajustar los filtros de búsqueda.</p>
-        </div>
-      </template>
-        <!-- <template v-slot:item.tipo_dte="{ item }">
-          <v-avatar small :color="getDteColor(item.tipo_dte)" density="compact" size="small">
-            {{ getDteName(item.tipo_dte) }}
-          </v-avatar>
-        </template> -->
-      <template v-slot:item.tipo_dte="{ item }">
-        <v-tooltip location="top">
-          <template v-slot:activator="{ props }">
-            <v-avatar v-bind="props" :color="getDteColor(item.tipo_dte)" size="32">
-              <span class="text-white text-caption font-weight-bold">{{ getDteAbbreviation(item.tipo_dte) }}</span>
-            </v-avatar>
-          </template>
-          <span>{{ getDteName(item.tipo_dte) }}</span>
-        </v-tooltip>
-      </template>
-      <template v-slot:item.numero_control="{ item }">
-          <div>
-            <span class="font-weight-medium">{{ item.numero_control }}</span>
-            <div class="d-flex align-center text-caption text-grey-darken-1 mt-1">
-              <v-tooltip location="top">
-                <template v-slot:activator="{ props }">
-                  <span v-bind="props">
-                    {{ item.codigo_generacion }}
-                  </span>
-                </template>
-                <span>{{ item.codigo_generacion }}</span>
-              </v-tooltip>
-              <v-btn
-                icon="mdi-content-copy"
-                variant="text"
-                color="grey"
-                size="x-small"
-                class="ml-1"
-                @click="copyToClipboard(item.codigo_generacion)"
-                title="Copiar Código de Generación"
-              ></v-btn>
-            </div>
+        <template v-slot:no-data>
+          <div class="pa-4 text-center">
+            <v-icon size="x-large" color="grey-lighten-1" class="mb-2">mdi-magnify-remove-outline</v-icon>
+            <h4 class="text-grey-darken-1">No se encontraron resultados</h4>
+            <p class="text-grey-darken-2 text-body-2">Intente ajustar los filtros de búsqueda.</p>
           </div>
         </template>
-        <!-- ✨ NUEVO SLOT PARA MOSTRAR EL CLIENTE ✨ -->
-        <template v-slot:item.receptor_nombre="{ item }">
-          <div>
-            <span class="font-weight-medium">{{ item.receptor_nombre || 'N/A' }}</span>
-            <div v-if="item.receptor_documento" class="text-caption text-grey-darken-1">
-              {{ item.receptor_documento }}
-            </div>
-          </div>
-        </template>
-        <!-- <template v-slot:item.subtotal="{ item }">
-          <span>${{ item.subtotal?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span>
-        </template>
 
-        <template v-slot:item.iva="{ item }">
-          <span>${{ item.iva?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span>
-        </template> -->
-        <template v-slot:item.montos="{ item }">
-            <div>
-                <span>${{ item.subtotal?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span>
-                
-                <!-- Mostramos el IVA solo si es un Crédito Fiscal (tipo 03) -->
-                <div v-if="item.tipo_dte === '03'" class="text-caption text-grey-darken-1">
-                    <span class="font-weight-bold">IVA:</span> ${{ item.iva?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
-                </div>
-                <div v-if="item.json_enviado?.resumen?.ivaRete1 > 0" class="text-caption text-red">
-                  <span class="font-weight-bold">IVA Retenido:</span> -${{ item.json_enviado.resumen.ivaRete1.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
-              </div>
-            </div>
-        </template>
-
-        <template v-slot:item.total="{ item }">
-          <span class="font-weight-bold">${{ item.total?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span>
-        </template>
-        
-        <!-- <template v-slot:item.estado="{ item }">
-          <v-chip small :color="getStatusColor(item.estado)" density="compact" size="small">{{ item.estado }}</v-chip>
-        </template> -->
-
-        <template v-slot:item.estado="{ item }">
+        <template v-slot:item.tipo_dte="{ item }">
           <v-tooltip location="top">
             <template v-slot:activator="{ props }">
-              <v-icon
-                v-bind="props"
-                :icon="getStatusIcon(item.estado)"
-                :color="getStatusColor(item.estado)"
-              ></v-icon>
+              <v-avatar v-bind="props" :color="getDteColor(item.tipo_dte)" size="32">
+                <span class="text-white text-caption font-weight-bold">{{ getDteAbbreviation(item.tipo_dte) }}</span>
+              </v-avatar>
             </template>
-            <span>{{ item.estado }}</span>
+            <span>{{ getDteName(item.tipo_dte) }}</span>
           </v-tooltip>
         </template>
+        <template v-slot:item.numero_control="{ item }">
+            <div>
+              <span class="font-weight-medium">{{ item.numero_control }}</span>
+              <div class="d-flex align-center text-caption text-grey-darken-1 mt-1">
+                <v-tooltip location="top">
+                  <template v-slot:activator="{ props }">
+                    <span v-bind="props">
+                      {{ item.codigo_generacion }}
+                    </span>
+                  </template>
+                  <span>{{ item.codigo_generacion }}</span>
+                </v-tooltip>
+                <v-btn
+                  icon="mdi-content-copy"
+                  variant="text"
+                  color="grey"
+                  size="x-small"
+                  class="ml-1"
+                  @click="copyToClipboard(item.codigo_generacion)"
+                  title="Copiar Código de Generación"
+                ></v-btn>
+              </div>
+            </div>
+          </template>
+          <!-- ✨ NUEVO SLOT PARA MOSTRAR EL CLIENTE ✨ -->
+          <template v-slot:item.receptor_nombre="{ item }">
+            <div>
+              <span class="font-weight-medium">{{ item.receptor_nombre || 'N/A' }}</span>
+              <div v-if="item.receptor_documento" class="text-caption text-grey-darken-1">
+                {{ item.receptor_documento }}
+              </div>
+            </div>
+          </template>
 
-        <template v-slot:item.fh_procesamiento="{ item }">
-          {{ formatDateTime(item.fh_procesamiento) }}
-        </template>
+          <template v-slot:item.montos="{ item }">
+              <div>
+                  <span>${{ item.subtotal?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span>
+                  
+                  <!-- Mostramos el IVA solo si es un Crédito Fiscal (tipo 03) -->
+                  <div v-if="item.tipo_dte === '03'" class="text-caption text-grey-darken-1">
+                      <span class="font-weight-bold">IVA:</span> ${{ item.iva?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                  </div>
+                  <div v-if="item.json_enviado?.resumen?.ivaRete1 > 0" class="text-caption text-red">
+                    <span class="font-weight-bold">IVA Retenido:</span> -${{ item.json_enviado.resumen.ivaRete1.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                </div>
+              </div>
+          </template>
 
-        <!-- <template v-slot:item.actions="{ item }">
-          <v-btn 
-            icon="mdi-download" 
-            variant="text" 
-            color="primary" 
-            size="small" 
-            @click="downloadPdf(item)" 
-            title="Descargar PDF"
-            :loading="item.pdfLoading" 
-          ></v-btn>
+          <template v-slot:item.total="{ item }">
+            <span class="font-weight-bold">${{ item.total?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span>
+          </template>
 
-          <v-btn
-              icon="mdi-code-json"
-              variant="text"
-              color="indigo-lighten-1"
-              size="small"
-              @click="viewJson(item)"
-              title="Ver JSON Enviado"
-              :loading="item.jsonLoading"
-          ></v-btn>
+          <template v-slot:item.estado="{ item }">
+            <v-tooltip location="top">
+              <template v-slot:activator="{ props }">
+                <v-icon
+                  v-bind="props"
+                  :icon="getStatusIcon(item.estado)"
+                  :color="getStatusColor(item.estado)"
+                ></v-icon>
+              </template>
+              <span>{{ item.estado }}</span>
+            </v-tooltip>
+          </template>
 
-          <v-btn
-            v-if="item.json_enviado?.receptor?.telefono"
-            icon="mdi-whatsapp"
-            variant="text"
-            color="green"
-            size="small"
-            @click="shareOnWhatsApp(item)"
-            title="Enviar por WhatsApp"
-            :loading="item.whatsAppLoading" >
-          </v-btn>
+          <template v-slot:item.fh_procesamiento="{ item }">
+            {{ formatDateTime(item.fh_procesamiento) }}
+          </template>
 
-          <v-btn 
-            v-if="item.estado === 'PROCESADO'" 
-            icon="mdi-cancel" 
-            variant="text" 
-            color="error" 
-            size="small" 
-            @click.stop="openInvalidateDialog(item)"  
-            title="Invalidar Documento"
-          ></v-btn>
-        </template> -->
-        <template v-slot:item.actions="{ item }">
-          <v-tooltip location="top" text="Descargar PDF">
-            <template v-slot:activator="{ props }">
-              <v-btn 
-                v-bind="props"
-                icon="mdi-file-pdf-box"
-                variant="text" 
-                color="primary" 
-                size="small" 
-                @click="downloadPdf(item)"
-                :loading="item.pdfLoading" 
-              ></v-btn>
-            </template>
-          </v-tooltip>
+          <template v-slot:item.actions="{ item }">
+            <v-tooltip location="top" text="Descargar PDF">
+              <template v-slot:activator="{ props }">
+                <v-btn 
+                  v-bind="props"
+                  icon="mdi-file-pdf-box"
+                  variant="text" 
+                  color="primary" 
+                  size="small" 
+                  @click="downloadPdf(item)"
+                  :loading="item.pdfLoading" 
+                ></v-btn>
+              </template>
+            </v-tooltip>
 
-          <v-tooltip location="top" text="Reenviar por Correo">
-            <template v-slot:activator="{ props }">
-              <v-btn
-                v-bind="props"
-                icon="mdi-email"
-                variant="text"
-                color="grey-darken-1"
-                size="small"
-                :loading="item.isSendingEmail"
-                :disabled="item.isSendingEmail"
-                @click="reenviarCorreo(item)"
-              ></v-btn>
-            </template>
-          </v-tooltip>
+            <v-tooltip location="top" text="Reenviar por Correo">
+              <template v-slot:activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  icon="mdi-email"
+                  variant="text"
+                  color="grey-darken-1"
+                  size="small"
+                  :loading="item.isSendingEmail"
+                  :disabled="item.isSendingEmail"
+                  @click="reenviarCorreo(item)"
+                ></v-btn>
+              </template>
+            </v-tooltip>
 
-          <v-tooltip location="top" text="Ver Detalles">
-            <template v-slot:activator="{ props }">
-              <v-btn
-                v-bind="props"
-                icon="mdi-dots-vertical"
-                variant="text"
-                size="small"
-                @click="viewJson(item)"
-                :loading="item.jsonLoading"
-              ></v-btn>
-            </template>
-          </v-tooltip>
-        </template>
+            <v-tooltip location="top" text="Ver Detalles">
+              <template v-slot:activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  icon="mdi-dots-vertical"
+                  variant="text"
+                  size="small"
+                  @click="viewJson(item)"
+                  :loading="item.jsonLoading"
+                ></v-btn>
+              </template>
+            </v-tooltip>
+          </template>
+          <template v-slot:expanded-row="{ columns, item }">
+            <tr>
+              <td></td> <td :colspan="columns.length - 1">
+                <v-card variant="tonal" class="ma-2">
+                  <v-card-title class="text-caption">Detalles de Items</v-card-title>
+                  <v-divider></v-divider>
+                  <v-table density="compact">
+                    <thead>
+                      <tr>
+                        <th class="text-left">Descripción</th>
+                        <th class="text-right">Cantidad</th>
+                        <th class="text-right">Precio Unit.</th>
+                        <th class="text-right">Total Item</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="detalle in item.items" :key="detalle.id">
+                        <td>{{ detalle.descripcion }}</td>
+                        <td class="text-right">{{ detalle.cantidad }}</td>
+                        <td class="text-right">${{ parseFloat(detalle.precio_unitario).toFixed(2) }}</td>
+                        <td class="text-right">${{ (detalle.cantidad * detalle.precio_unitario).toFixed(2) }}</td>
+                      </tr>
+                      <tr v-if="!item.items || item.items.length === 0">
+                        <td colspan="4" class="text-center text-caption">No hay items detallados para este documento.</td>
+                      </tr>
+                    </tbody>
+                  </v-table>
+                </v-card>
+              </td>
+            </tr>
+          </template>
       </v-data-table-server>
     </v-card>
   </v-container>
@@ -527,15 +505,18 @@ const invalidateDialog = ref({ show: false, dte: null, motivo: '', loading: fals
 const jsonDialog = ref({ show: false, content: '', data: null, item: null });
 
 const headers = [
-  { title: 'Tipo', key: 'tipo_dte', sortable: false },
+  { title: 'Tipo', key: 'tipo_dte', sortable: false, width: '5%' },
   { title: 'Control / Generación', key: 'numero_control', sortable: false },
-  { title: 'Cliente', key: 'receptor_nombre', sortable: true, width: '25%' },
-  { title: 'Estado', key: 'estado', sortable: true, width: '100px' },
-  { title: 'Montos', key: 'montos', align: 'end', sortable: false },
-  { title: 'Total', key: 'total', align: 'end', sortable: true },
-  { title: 'Fecha Procesamiento', key: 'fh_procesamiento', sortable: true },
-  { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
+  { title: 'Cliente', key: 'receptor_nombre', sortable: true, width: '18%' },
+  { title: 'Status', key: 'estado', align: 'center', sortable: false, width: '3%' },
+  { title: 'Montos', key: 'montos', align: 'end', sortable: false }, // Mantener compacto
+  { title: 'Total', key: 'total', align: 'end' },
+  { title: 'Fecha Proc.', key: 'fh_procesamiento', sortable: true, width: '10%' },
+  { title: 'Acciones', key: 'actions', sortable: false, align: 'start' },
+  { title: '', key: 'data-table-expand', sortable: false, width: '2%' },
 ];
+
+const expandedItems = ref([]);
 
 // --- LÓGICA PRINCIPAL ---
 
