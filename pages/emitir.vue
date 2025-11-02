@@ -780,8 +780,7 @@ const rentaRetenidaCalculada = computed(() => {
   }
 
   // Suma el total SOLAMENTE de los items marcados como "Servicio" (tipoItem === 2)
-  const totalServicios = form.value.items
-    .filter(item => item.tipoItem === 2)
+  const totalCompra = form.value.items
     .reduce((acc, item) => acc + (item.cantidad * item.precio_unitario), 0);
   
   // Devuelve el 10% de ese total
