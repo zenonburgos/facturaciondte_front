@@ -212,6 +212,7 @@
             </template>
           </v-autocomplete>
           
+          
           <v-card 
             v-if="['03', '05', '06'].includes(form.tipo_dte) && form.cliente?.id"
             variant="tonal"
@@ -240,7 +241,8 @@
                 </p>
               </v-col>
             </v-row>
-            </v-card>
+          </v-card>
+
           <v-card 
             v-if="form.tipo_dte === '03' && form.cliente?.id"
             variant="tonal"
@@ -456,14 +458,6 @@
                     <td></td>
                 </tr>
 
-                <!-- ========= PARA SUJETO EXCLUIDO ========= -->
-                <tr v-if="form.tipo_dte === '14' && rentaRetenidaCalculada > 0">
-                    <td colspan="5" class="text-right font-weight-bold text-error">RENTA RETENIDA (10%)</td>
-                    <td class="text-right font-weight-bold text-error">- ${{ rentaRetenidaCalculada.toFixed(2) }}</td>
-                    <td></td>
-                </tr>
-                <!-- ========= FIN DE CAMBIO ========= -->
-
                 <tr v-if="aplicaRetencion">
                     <td colspan="5" class="text-right">
                         <v-chip color="info" label size="small">
@@ -477,7 +471,7 @@
                 
                 <tr>
                     <td colspan="5" class="text-right text-h6 font-weight-black">
-                        {{ aplicaRetencion || (form.tipo_dte === '14' && rentaRetenidaCalculada > 0 ? 'TOTAL A PAGAR' : 'TOTAL' }}
+                        {{ aplicaRetencion ? 'TOTAL A PAGAR' : 'TOTAL' }}
                     </td>
                     <td class="text-right text-h6 font-weight-black">${{ totalAPagar.toFixed(2) }}</td>
                     <td></td>
@@ -667,7 +661,6 @@ const form = ref({
   force_contingency: false,
 });
 
-
 const newItem = ref({
   descripcion: '',
   cantidad: 1,
@@ -728,27 +721,6 @@ const rules = {
   required: value => !!value || 'Este campo es requerido.',
 };
 
-const rentaRetenidaCalculada = computed(() => {
-  if (form.value.tipo_dte !== '14' || !form.value.items || form.value.items.length === 0) {
-    return 0.00;
-  }
-
-  // 1. Sumar el valor *solo* de los items que son servicios (tipoItem === 2)
-  const montoServicios = form.value.items.reduce((acc, item) => {
-    if (item.tipoItem === 2) { // 2 = Servicio
-      return acc + (item.cantidad * item.precio_unitario);
-    }
-    return acc;
-  }, 0);
-
-  // 2. Calcular el 10% y redondear a 2 decimales
-  if (montoServicios === 0) {
-    return 0.00;
-  }
-  
-  return Math.round((montoServicios * 0.10) * 100) / 100;
-});
-
 
 // B. Base para cálculos: Total Gravado SIN IVA
 
@@ -798,24 +770,8 @@ const ivaRetenidoCalculado = computed(() => {
 
 // 4. ¿Cuál es el TOTAL A PAGAR final que ve el usuario?
 const totalAPagar = computed(() => {
-  if (!subtotales.value) return 0.00;
-  
-  const subTotal = subtotales.value.total; // O como lo estés calculando
-  const iva = subtotales.value.iva || 0;
-  const ivaRete = ivaRetenidoCalculado.value || 0;
-  const rentaRete = rentaRetenidaCalculada.value || 0; // Se añade la nueva variable
-
-  // Ajusta esta fórmula según tu lógica exacta (ej. FCF vs CCF)
-  // Esta es una aproximación:
-  if (form.value.tipo_dte === '03') {
-     return (subtotales.value.subTotal + iva) - ivaRete;
-  }
-  if (form.value.tipo_dte === '14') {
-     // subtotales.subTotal en FSE es el Total Compra.
-     return subtotales.value.subTotal - rentaRete; // Total compra - Renta Retenida
-  }
-
-  return subtotales.value.subTotal; // O tu lógica para FCF, etc.
+    // Simplemente resta el monto retenido (que será 0 si no aplica) del total.
+    return subtotales.value.total - ivaRetenidoCalculado.value;
 });
 
 // ===================================================================
@@ -1039,8 +995,6 @@ async function submitDTE() {
     const payload = { ...form.value };
 
     payload.iva_retenido = ivaRetenidoCalculado.value;
-
-    payload.rete_renta = rentaRetenidaCalculada.value;
 
     if (payload.cliente) {
       const clienteSnakeCase = {};
