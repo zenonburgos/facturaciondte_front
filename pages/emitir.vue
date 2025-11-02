@@ -458,6 +458,12 @@
                     <td></td>
                 </tr>
 
+                <tr v-if="rentaRetenidaCalculada > 0">
+                  <td colspan="5" class="text-right font-weight-bold text-error">RENTA RETENIDA (10%)</td>
+                  <td class="text-right font-weight-bold text-error">- ${{ rentaRetenidaCalculada.toFixed(2) }}</td>
+                  <td></td>
+                </tr>
+
                 <tr v-if="aplicaRetencion">
                     <td colspan="5" class="text-right">
                         <v-chip color="info" label size="small">
@@ -768,10 +774,28 @@ const ivaRetenidoCalculado = computed(() => {
   return parseFloat((totalGravadaSinIva.value * 0.01).toFixed(2));
 });
 
+const rentaRetenidaCalculada = computed(() => {
+  if (form.value.tipo_dte !== '14') {
+    return 0;
+  }
+
+  // Suma el total SOLAMENTE de los items marcados como "Servicio" (tipoItem === 2)
+  const totalServicios = form.value.items
+    .filter(item => item.tipoItem === 2)
+    .reduce((acc, item) => acc + (item.cantidad * item.precio_unitario), 0);
+  
+  // Devuelve el 10% de ese total
+  return totalServicios * 0.10;
+});
+
 // 4. ¿Cuál es el TOTAL A PAGAR final que ve el usuario?
 const totalAPagar = computed(() => {
     // Simplemente resta el monto retenido (que será 0 si no aplica) del total.
-    return subtotales.value.total - ivaRetenidoCalculado.value;
+    const iva = (form.value.tipo_dte === '03') ? subtotales.value.iva : 0;
+    const ivaRete = ivaRetenidoCalculado.value;
+
+    const rentaRete = rentaRetenidaCalculada.value; // Añadimos la nueva retención
+    return (total + iva) - ivaRete - rentaRete; // La restamos del total
 });
 
 // ===================================================================
@@ -995,6 +1019,8 @@ async function submitDTE() {
     const payload = { ...form.value };
 
     payload.iva_retenido = ivaRetenidoCalculado.value;
+
+    payload.rete_renta = rentaRetenidaCalculada.value;
 
     if (payload.cliente) {
       const clienteSnakeCase = {};
