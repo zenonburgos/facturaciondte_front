@@ -779,22 +779,36 @@ const rentaRetenidaCalculada = computed(() => {
     return 0;
   }
 
-  // Suma el total SOLAMENTE de los items marcados como "Servicio" (tipoItem === 2)
+  // Hacemos el reduce "seguro"
   const totalCompra = form.value.items
-    .reduce((acc, item) => acc + (item.cantidad * item.precio_unitario), 0);
+    .reduce((acc, item) => {
+      // Convertimos a número (o 0 si es null/undefined)
+      const cantidad = Number(item.cantidad) || 0;
+      const precio = Number(item.precio_unitario) || 0;
+      return acc + (cantidad * precio);
+    }, 0); // Empezamos con 0
   
-  // Devuelve el 10% de ese total
-  return totalServicios * 0.10;
+  // Devuelve el 10% del total de la compra
+  return totalCompra * 0.10;
 });
 
 // 4. ¿Cuál es el TOTAL A PAGAR final que ve el usuario?
 const totalAPagar = computed(() => {
-    // Simplemente resta el monto retenido (que será 0 si no aplica) del total.
-    const iva = (form.value.tipo_dte === '03') ? subtotales.value.iva : 0;
-    const ivaRete = ivaRetenidoCalculado.value;
+  // --- INICIO DE CAMBIO QUIRÚRGICO (FIX totalAPagar) ---
+  
+  // 1. Definimos 'total' (esta línea faltaba)
+  const total = subtotales.value.total; 
+  
+  // 2. Obtenemos los valores que ya tenías
+  const iva = (form.value.tipo_dte === '03') ? subtotales.value.iva : 0;
+  const ivaRete = ivaRetenidoCalculado.value;
+  
+  // 3. Obtenemos el nuevo valor
+  const rentaRete = rentaRetenidaCalculada.value;
 
-    const rentaRete = rentaRetenidaCalculada.value; // Añadimos la nueva retención
-    return (total + iva) - ivaRete - rentaRete; // La restamos del total
+  // 4. Retornamos el cálculo completo
+  return (total + iva) - ivaRete - rentaRete;
+  // --- FIN DE CAMBIO QUIRÚRGICO (FIX totalAPagar) ---
 });
 
 // ===================================================================
