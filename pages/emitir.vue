@@ -794,21 +794,13 @@ const rentaRetenidaCalculada = computed(() => {
 
 // 4. ¿Cuál es el TOTAL A PAGAR final que ve el usuario?
 const totalAPagar = computed(() => {
-  // --- INICIO DE CAMBIO QUIRÚRGICO (FIX totalAPagar) ---
   
-  // 1. Definimos 'total' (esta línea faltaba)
   const total = subtotales.value.total; 
   
-  // 2. Obtenemos los valores que ya tenías
-  const iva = (form.value.tipo_dte === '03') ? subtotales.value.iva : 0;
-  const ivaRete = ivaRetenidoCalculado.value;
-  
-  // 3. Obtenemos el nuevo valor
+  const ivaRete = ivaRetenidoCalculado.value;  
   const rentaRete = rentaRetenidaCalculada.value;
 
-  // 4. Retornamos el cálculo completo
-  return (total + iva) - ivaRete - rentaRete;
-  // --- FIN DE CAMBIO QUIRÚRGICO (FIX totalAPagar) ---
+  return total - ivaRete - rentaRete;
 });
 
 // ===================================================================
