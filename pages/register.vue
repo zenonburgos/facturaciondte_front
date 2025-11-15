@@ -153,6 +153,30 @@
 
           <p class="text-h6 mb-4">3. Credenciales de Hacienda (Con base a lo que generó en plataforma de <a href="https://factura.gob.sv" target="_blank" rel="noopener noreferrer">factura.gob.sv</a>)</p>
           <v-row>
+            <v-col cols="12">
+                <v-select
+                    v-model="form.tipo_establecimiento_codigo"
+                    :items="tiposDeEstablecimiento"
+                    item-title="title"   
+                    item-value="value"   
+                    label="Tipo de Establecimiento"
+                    :rules="[rules.required]"
+                    variant="outlined"
+                    density="compact"
+                ></v-select>
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field 
+                v-model="form.codigo_establecimiento_mh" 
+                ></v-text-field>
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field 
+                v-model="form.codigo_establecimiento" 
+                ></v-text-field>
+            </v-col>
+          </v-row>
+          <v-row>
             <v-col cols="12" md="6">
               <v-text-field v-model="form.mh_password_api" label="Clave acceso API Hacienda" type="password" variant="outlined" density="compact"></v-text-field>
             </v-col>
@@ -221,6 +245,24 @@ const actividadResults = ref([]);
 const actividadLoading = ref(false);
 let actividadTimeout = null;
 
+const tiposDeEstablecimiento = ref([
+    { title: 'Casa Matriz', value: '02' },
+    { title: 'Sucursal', value: '01' },
+    { title: 'Bodega', value: '03' },
+    { title: 'Predio o S S F', value: '04' },
+    { title: 'Oficina de Ventas', value: '05' },
+    { title: 'Sin Tipo', value: '06' },
+    { title: 'Puesto de Venta', value: '07' },
+    { title: 'Vehículo', value: '08' },
+    { title: 'Maq. O Aut. De Ventas', value: '09' },
+    { title: 'Call Center', value: '10' },
+    { title: 'Ventas por Internet', value: '11' },
+    { title: 'Ventas por Correo', value: '12' },
+    { title: 'Kiosco', value: '13' },
+    { title: 'Tienda', value: '14' },
+    { title: 'Ventas a Domicilio', value: '15' },
+]);
+
 definePageMeta({
   layout: 'login', // Usamos el layout de login para una apariencia consistente
 });
@@ -248,6 +290,9 @@ const form = ref({
   empresa_nrc: '',
   empresa_telefono: '',
   empresa_correo: '',
+  tipo_establecimiento_codigo: '02',
+  codigo_establecimiento_mh: 'M001',
+  codigo_establecimiento: 'P001',
   empresa_actividad_codigo: '',
   empresa_actividad_desc: '',
   empresa_direccion: { departamento: null, municipio: null, complemento: '' },
