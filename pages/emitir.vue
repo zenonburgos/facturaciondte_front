@@ -333,37 +333,75 @@
             <v-row align="center">
               <v-col cols="12" md="4">
                 <v-combobox
-                 v-if="authStore.user?.empresa?.usa_inventario"
-                  v-model="newItem.descripcion"
-                  label="Buscar Producto o escribir Descripción"
-                  :items="searchedProducts"
-                  item-title="nombre"
-                  @update:search="searchProducts"
-                  :loading="isSearching"
-                  no-filter
-                  @update:model-value="productSelected"
-                  variant="outlined"
-                  density="compact"
-                  hide-details="auto" 
-                  >
+                    v-if="authStore.user?.empresa?.usa_inventario"
+                    v-model="newItem.descripcion"
+                    label="Buscar por Nombre, SKU o Escanear Barcode"
+                    placeholder="Escribe o escanea aquí..."
+                    prepend-inner-icon="mdi-barcode-scan"
+                    :items="searchedProducts"
+                    item-title="nombre"
+                    item-value="id"
+                    @update:search="searchProducts"
+                    :loading="isSearching"
+                    no-filter
+                    @update:model-value="productSelected"
+                    @keydown.enter.prevent 
+                    variant="outlined"
+                    density="compact"
+                    hide-details="auto"
+                    return-object
+                    clearable
+                >
                   <template v-slot:prepend-inner>
                     <v-chip
-                      v-if="newItem.codigo"
-                      class="mr-2"
-                      color="blue-grey"
-                      size="small"
-                      label
+                        v-if="newItem.codigo"
+                        class="ma-1"
+                        color="blue-grey-lighten-4"
+                        text-color="blue-grey-darken-3"
+                        size="small"
+                        label
+                        variant="flat"
                     >
-                      {{ newItem.codigo }}
+                        <strong>{{ newItem.codigo }}</strong>
                     </v-chip>
-                  </template>
+                </template>
 
                   <template v-slot:item="{ props, item }">
-                    <v-list-item 
-                      v-bind="props" 
-                      :title="item.raw.nombre" 
-                      :subtitle="`Código: ${item.raw.codigo} | Precio: $${item.raw.precio_unitario}`"
-                    ></v-list-item>
+                      <v-list-item v-bind="props" lines="two">
+                          <v-list-item-title class="font-weight-bold">
+                              {{ item.raw.nombre }}
+                          </v-list-item-title>
+                          
+                          <v-list-item-subtitle class="d-flex align-center mt-1">
+                              <span v-if="item.raw.barcode" class="mr-3 text-high-emphasis">
+                                  <v-icon size="x-small" start>mdi-barcode</v-icon> 
+                                  {{ item.raw.barcode }}
+                              </span>
+                              <span v-else-if="item.raw.sku" class="mr-3 text-medium-emphasis">
+                                  <v-icon size="x-small" start>mdi-label-outline</v-icon> 
+                                  SKU: {{ item.raw.sku }}
+                              </span>
+                              
+                              <v-chip size="x-small" color="green" class="mr-2" variant="outlined">
+                                  ${{ parseFloat(item.raw.precio_unitario).toFixed(2) }}
+                              </v-chip>
+                              
+                              <span class="text-caption text-disabled">
+                                  (Int: {{ item.raw.codigo }})
+                              </span>
+                          </v-list-item-subtitle>
+                      </v-list-item>
+                  </template>
+                  
+                  <template v-slot:no-data>
+                      <v-list-item>
+                          <v-list-item-title>
+                              No se encontraron productos.
+                          </v-list-item-title>
+                          <v-list-item-subtitle>
+                              Presiona Enter para agregar como texto libre.
+                          </v-list-item-subtitle>
+                      </v-list-item>
                   </template>
                 </v-combobox>
                 <v-text-field
@@ -1249,18 +1287,57 @@ async function searchProducts(query) {
     searchedProducts.value = [];
     return;
   }
+
   isSearching.value = true;
   clearTimeout(searchTimeout);
+
   searchTimeout = setTimeout(async () => {
     try {
-      searchedProducts.value = await $api(`/api/products/search?q=${query}`);
+      const response = await $api(`/api/products/search?q=${query}`);
+      searchedProducts.value = response;
+
+      // --- LÓGICA DE AUTO-AGREGADO (SCANNER) ---
+      if (response.length === 1) {
+        const product = response[0];
+        const cleanQuery = query.trim();
+
+        // Verificamos si lo que se buscó es IDÉNTICO al Barcode o SKU
+        // Usamos == para ser flexibles con tipos (string vs number)
+        if (product.barcode == cleanQuery || product.sku == cleanQuery || product.codigo == cleanQuery) {
+            
+            // 1. PREPARAR EL ÍTEM (Tu función actual)
+            productSelected(product); 
+            
+            // 2. DEFINIR CANTIDAD POR DEFECTO (Scanner siempre suma 1)
+            // Asegúrate de que tu newItem tenga cantidad
+            if (!newItem.value.cantidad) newItem.value.cantidad = 1;
+
+            // 3. AGREGAR A LA LISTA DE FACTURA
+            // ¡Aquí llamamos a la función que usa tu botón "+"!
+            addItem(); // <--- REEMPLAZA ESTO CON EL NOMBRE REAL DE TU FUNCIÓN
+
+            // 4. FEEDBACK Y LIMPIEZA
+            // Mostramos una notificación pequeña o sonido (opcional)
+            // notificationStore.showNotification({ message: 'Producto agregado', color: 'success' });
+
+            // Limpiamos para el siguiente escaneo INMEDIATAMENTE
+            searchedProducts.value = [];
+            newItem.value.descripcion = null; // O ''
+            
+            // Truco: Mantener el foco en el combo para el siguiente
+            // document.activeElement.blur(); // A veces ayuda quitar y poner foco
+            // nextTick(() => refCombobox.value.focus());
+        }
+      }
+      // ------------------------------------------
+
     } catch (error) {
       console.error("Error buscando productos:", error);
       searchedProducts.value = [];
     } finally {
       isSearching.value = false;
     }
-  }, 500);
+  }, 300); // Bajé a 300ms para que el scanner se sienta más rápido
 }
 
 function productSelected(value) {
