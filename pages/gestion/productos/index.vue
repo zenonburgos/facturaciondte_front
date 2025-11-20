@@ -80,15 +80,35 @@
               </v-col>
               <v-col cols="12" sm="9">
                 <v-row>
-                  <v-col cols="12" sm="6">
+                  <v-col cols="12" sm="4">
                     <v-text-field
                       v-model="editedItem.codigo"
-                      label="Código / SKU"
+                      label="Cód. Interno"
                       :rules="[rules.required]"
                       variant="outlined" density="compact"
                     ></v-text-field>
                   </v-col>
-                  <v-col cols="12" sm="6">
+
+                  <v-col cols="12" sm="4">
+                    <v-text-field
+                      v-model="editedItem.sku"
+                      label="SKU"
+                      hint="Actualmente contiene errores de importación"
+                      persistent-hint
+                      variant="outlined" density="compact"
+                    ></v-text-field>
+                  </v-col>
+
+                  <v-col cols="12" sm="4">
+                    <v-text-field
+                      v-model="editedItem.barcode"
+                      label="Barcode (GTIN/EAN)"
+                      prepend-inner-icon="mdi-barcode"
+                      variant="outlined" density="compact"
+                    ></v-text-field>
+                  </v-col>
+
+                  <v-col cols="12">
                     <v-text-field
                       v-model="editedItem.nombre"
                       label="Nombre del Producto"
@@ -175,6 +195,8 @@ let searchTimeout = null;
 const headers = [
   { title: '', key: 'imagen_url', sortable: false, width: '60px' },
   { title: 'Código', key: 'codigo' },
+  { title: 'SKU', key: 'sku' },          // <--- NUEVO
+  { title: 'Barcode', key: 'barcode' },  // <--- NUEVO
   { title: 'Nombre', key: 'nombre' },
   { title: 'Precio', key: 'precio_unitario', align: 'end' },
   { title: 'Stock', key: 'stock', align: 'end' },
@@ -191,6 +213,8 @@ const formRef = ref(null);
 const editedItem = ref({
   id: null,
   codigo: '',
+  sku: '',
+  barcode: '',
   nombre: '',
   descripcion: '',
   precio_unitario: 0,
