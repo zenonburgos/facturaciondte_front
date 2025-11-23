@@ -457,10 +457,10 @@
               <thead>
                 <tr>
                   <th class="text-left">Descripción</th>
-                  <th class="text-left">Tipo</th>
-                  <th class="text-left">U. Medida</th>
-                  <th class="text-left">Cantidad</th>
-                  <th class="text-left">P. Unitario</th>
+                  <th class="text-center">Tipo</th>
+                  <th class="text-center">U. Medida</th>
+                  <th class="text-center">Cantidad</th>
+                  <th class="text-center">P. Unitario</th>
                   <th class="text-right">Subtotal</th>
                   <th></th>
                 </tr>
@@ -468,56 +468,84 @@
               <tbody>
                 <tr v-for="(item, index) in form.items" :key="index">
                   <td>{{ item.descripcion }}</td>
-                  <td>{{ item.tipoItem === 1 ? 'Bien' : 'Servicio' }}</td>
-                  <td>{{ getUnidadMedidaNombre(item.uniMedida) }}</td>
-                  <td>{{ item.cantidad }}</td>
-                  <td>${{ item.precio_unitario.toFixed(2) }}</td>
-                  <td class="text-right">${{ (item.cantidad * item.precio_unitario).toFixed(2) }}</td>
-                  <td><v-btn icon="mdi-delete" variant="text" color="error" size="x-small" @click="removeItem(index)"></v-btn></td>
+                  <td class="text-caption text-center" style="vertical-align: middle;">
+                    {{ item.tipoItem === 1 ? 'Bien' : 'Servicio' }}
+                  </td>
+                   
+                  <td class="text-caption text-center" style="vertical-align: middle;">
+                    {{ getUnidadMedidaNombre(item.uniMedida) }}
+                  </td>
+                   
+                  <td class="text-caption text-center" style="vertical-align: middle;">
+                    {{ item.cantidad }}
+                  </td>
+                   <!-- <td style="width: 120px;">
+                      <v-text-field
+                        v-model.number="item.cantidad"
+                        type="number"
+                        variant="underlined"
+                        density="compact"
+                        hide-details
+                        min="0.01"
+                        class="centered-input"
+                      ></v-text-field>
+                    </td> -->
+                   <td class="text-caption text-center" style="vertical-align: middle;">
+                    ${{ item.precio_unitario.toFixed(2) }}
+                   </td>
+                   
+                  <td class="text-caption text-right" style="vertical-align: middle;">
+                    ${{ (item.cantidad * item.precio_unitario).toFixed(2) }}
+                  </td>
+                  <!-- <td><v-btn icon="mdi-delete" variant="text" color="error" size="x-small" @click="removeItem(index)"></v-btn></td> -->
+                  <td class="d-flex align-center justify-end">
+                    <v-btn icon="mdi-pencil" variant="text" color="primary" size="small" @click="editItem(item, index)"></v-btn>
+                    <v-btn icon="mdi-delete" variant="text" color="error" size="small" @click="removeItem(index)"></v-btn>
+                  </td>
                 </tr>
               </tbody>
               <tfoot v-if="subtotales.total > 0">
         
                 <tr v-if="form.tipo_dte !== '01'">
-                    <td colspan="5" class="text-right font-weight-bold">SUBTOTAL</td>
-                    <td class="text-right font-weight-bold">${{ subtotales.subTotal.toFixed(2) }}</td>
+                    <td colspan="5" class="text-center font-weight-bold">SUBTOTAL</td>
+                    <td class="text-center font-weight-bold">${{ subtotales.subTotal.toFixed(2) }}</td>
                     <td></td>
                 </tr>
 
                 <tr v-if="form.tipo_dte === '03'">
-                    <td colspan="5" class="text-right font-weight-bold">IVA (13%)</td>
-                    <td class="text-right font-weight-bold">${{ subtotales.iva.toFixed(2) }}</td>
+                    <td colspan="5" class="text-center font-weight-bold">IVA (13%)</td>
+                    <td class="text-center font-weight-bold">${{ subtotales.iva.toFixed(2) }}</td>
                     <td></td>
                 </tr>
 
                 <tr v-if="aplicaRetencion">
-                    <td colspan="5" class="text-right font-weight-bold text-error">IVA RETENIDO (1%)</td>
-                    <td class="text-right font-weight-bold text-error">- ${{ ivaRetenidoCalculado.toFixed(2) }}</td>
+                    <td colspan="5" class="text-center font-weight-bold text-error">IVA RETENIDO (1%)</td>
+                    <td class="text-center font-weight-bold text-error">- ${{ ivaRetenidoCalculado.toFixed(2) }}</td>
                     <td></td>
                 </tr>
 
                 <tr v-if="rentaRetenidaCalculada > 0">
-                  <td colspan="5" class="text-right font-weight-bold text-error">RENTA RETENIDA (10%)</td>
-                  <td class="text-right font-weight-bold text-error">- ${{ rentaRetenidaCalculada.toFixed(2) }}</td>
+                  <td colspan="5" class="text-center font-weight-bold text-error">RENTA RETENIDA (10%)</td>
+                  <td class="text-center font-weight-bold text-error">- ${{ rentaRetenidaCalculada.toFixed(2) }}</td>
                   <td></td>
                 </tr>
 
                 <tr v-if="aplicaRetencion">
-                    <td colspan="5" class="text-right">
+                    <td colspan="5" class="text-center">
                         <v-chip color="info" label size="small">
                             <v-icon start icon="mdi-information-outline"></v-icon>
                             Retención Automática (Gran Contribuyente)
                         </v-chip>
                     </td>
-                    <td class="text-right font-weight-bold text-error">- ${{ ivaRetenidoCalculado.toFixed(2) }}</td>
+                    <td class="text-center font-weight-bold text-error">- ${{ ivaRetenidoCalculado.toFixed(2) }}</td>
                     <td></td>
                 </tr>
                 
                 <tr>
-                    <td colspan="5" class="text-right text-h6 font-weight-black">
+                    <td colspan="5" class="text-center text-h6 font-weight-black">
                         {{ aplicaRetencion ? 'TOTAL A PAGAR' : 'TOTAL' }}
                     </td>
-                    <td class="text-right text-h6 font-weight-black">${{ totalAPagar.toFixed(2) }}</td>
+                    <td class="text-center text-h6 font-weight-black">${{ totalAPagar.toFixed(2) }}</td>
                     <td></td>
                 </tr>
 
@@ -534,7 +562,7 @@
                   <th>Tipo DTE</th>
                   <th>Nº Documento</th>
                   <th>Monto Sujeto Ret.</th>
-                  <th>Acciones</th>
+                  <th class="text-center">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -585,72 +613,168 @@
       </v-card-text>
       <v-divider></v-divider>
       <v-card-actions class="pa-4 d-flex flex-column flex-sm-row align-center">
-  <div class="flex-grow-1 w-100 order-sm-first order-first">
-    <v-expand-transition>
-      <div :key="validationErrors.length">
-        <v-alert
-          v-if="validationErrors.length > 0"
-          type="warning"
-          variant="tonal"
-          density="compact"
-          class="text-body-2 text-sm-body-1"
-        >
-          <div class="font-weight-bold mb-1">Recuerde completar los siguientes datos para poder emitir:</div>
-          <ul class="pl-4">
-            <li v-for="(error, i) in validationErrors" :key="i">
-              {{ error }}
-            </li>
-          </ul>
-        </v-alert>
+        <div class="flex-grow-1 w-100 order-sm-first order-first">
+          <v-expand-transition>
+            <div :key="validationErrors.length">
+              <v-alert
+                v-if="validationErrors.length > 0"
+                type="warning"
+                variant="tonal"
+                density="compact"
+                class="text-body-2 text-sm-body-1"
+              >
+                <div class="font-weight-bold mb-1">Recuerde completar los siguientes datos para poder emitir:</div>
+                <ul class="pl-4">
+                  <li v-for="(error, i) in validationErrors" :key="i">
+                    {{ error }}
+                  </li>
+                </ul>
+              </v-alert>
 
-        <v-alert
-          v-else
-          type="success"
-          variant="tonal"
-          density="compact"
-          class="text-body-2 text-sm-body-1"
-        >
-          <div class="d-flex align-center font-weight-bold">
-            <v-icon start>mdi-check-circle-outline</v-icon>
-            ¡Todo listo para emitir su documento!
-          </div>
-        </v-alert>
-      </div>
-    </v-expand-transition>
-  </div>
-  <v-switch 
-      v-modeltch
-      v-if="authStore.user?.roles?.some(role => role.name === 'Admin')"
-      v-model="form.force_contingency"
-      color="orange-darken-3"
-      label="Enviar en Modo Contingencia"
-      hide-details
-      class="mb-4"
-    ></v-switch>
-  <div class="w-100 w-sm-auto mt-4 mt-sm-0 d-flex justify-center order-sm-last order-last">
-    <v-btn 
-      color="success" 
-      size="large" 
-      @click="submitDTE" 
-      :disabled="validationErrors.length > 0 || loading" 
-      :loading="loading"
-      block
-      max-width="300" 
-    >
-      Emitir Documento
-    </v-btn>
-  </div>
-</v-card-actions>
+              <v-alert
+                v-else
+                type="success"
+                variant="tonal"
+                density="compact"
+                class="text-body-2 text-sm-body-1"
+              >
+                <div class="d-flex align-center font-weight-bold">
+                  <v-icon start>mdi-check-circle-outline</v-icon>
+                  ¡Todo listo para emitir su documento!
+                </div>
+              </v-alert>
+            </div>
+          </v-expand-transition>
+        </div>
+        <v-switch 
+            v-modeltch
+            v-if="authStore.user?.roles?.some(role => role.name === 'Admin')"
+            v-model="form.force_contingency"
+            color="orange-darken-3"
+            label="Enviar en Modo Contingencia"
+            hide-details
+            class="mb-4"
+          ></v-switch>
+        <div class="w-100 w-sm-auto mt-4 mt-sm-0 d-flex justify-center order-sm-last order-last">
+          <v-btn 
+            color="success" 
+            size="large" 
+            @click="submitDTE" 
+            :disabled="validationErrors.length > 0 || loading" 
+            :loading="loading"
+            block
+            max-width="300" 
+          >
+            Emitir Documento
+          </v-btn>
+        </div>
+      </v-card-actions>
     </v-card>
   </v-container>
+  <v-container>
+     <TicketDTE 
+        ref="ticketRef"
+        :dte-data="datosFacturaExitosa"
+        :items="form.items"
+        :receptor="form.cliente || { nombre: 'Clientes Varios' }"
+        
+        :emisor="authStore.user?.empresa || {}" 
+        
+        :resumen="resumenTicketSnapshot"
+      />
+
+     <v-dialog v-model="editDialog" max-width="500px">
+      <v-card>
+        <v-card-title>Editar Detalle</v-card-title>
+        <v-card-text>
+          <v-row dense>
+            <v-col cols="12">
+              <v-text-field 
+                v-model="editedItem.descripcion" 
+                label="Descripción" 
+                variant="outlined"
+                @keydown.enter="saveEdit" 
+              ></v-text-field>
+            </v-col>
+            
+            <v-col cols="6">
+              <v-select 
+                v-model="editedItem.tipoItem" 
+                :items="tiposDeItem" 
+                label="Tipo" 
+                item-title="title" item-value="value"
+                variant="outlined" density="compact"
+              ></v-select>
+            </v-col>
+            
+            <v-col cols="6">
+              <v-autocomplete 
+                v-model="editedItem.uniMedida" 
+                :items="unidadesDeMedida" 
+                label="Unidad" 
+                item-title="title" item-value="value"
+                variant="outlined" density="compact"
+              ></v-autocomplete>
+            </v-col>
+
+            <v-col cols="6">
+              <v-text-field 
+                v-model.number="editedItem.cantidad" 
+                label="Cantidad" type="number"
+                variant="outlined" density="compact"
+                @keydown.enter="saveEdit"
+              ></v-text-field>
+            </v-col>
+
+            <v-col cols="6">
+              <v-text-field 
+                v-model.number="editedItem.precio_unitario" 
+                label="Precio Unitario" type="number" prefix="$"
+                variant="outlined" density="compact"
+                @keydown.enter="saveEdit"
+              ></v-text-field>
+            </v-col>
+            
+            <v-col cols="12">
+              <v-checkbox 
+                v-model="editedItem.esExento" 
+                label="Venta Exenta" 
+                color="primary"
+                density="compact"
+                hide-details
+                @keydown.enter="saveEdit"
+              ></v-checkbox>
+            </v-col>
+          </v-row>
+        </v-card-text>
+        
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="grey-darken-1" variant="text" @click="closeEdit">Cancelar</v-btn>
+          <v-btn color="primary" variant="text" @click="saveEdit">Guardar Cambios</v-btn>
+        </v-card-actions>
+      </v-card>
+     </v-dialog>
+     <TicketDTE 
+        ref="ticketRef"
+        :dte-data="datosFacturaExitosa"
+        :items="form.items"
+        :receptor="form.cliente || { nombre: 'Clientes Varios' }"
+        :emisor="authStore.user.empresa" 
+        :resumen="resumenTicketSnapshot"
+      />
+  </v-container>
 </template>
+
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '~/stores/auth';
 import { useNotificationStore } from '~/stores/notifications';
+import TicketDTE from '~/components/pos/TicketDTE.vue';
 
+const datosFacturaExitosa = ref(null);
 const { $api } = useNuxtApp();
 const authStore = useAuthStore();
 const notificationStore = useNotificationStore();
@@ -658,6 +782,10 @@ const router = useRouter();
 const route = useRoute();
 
 // --- ESTADOS DEL COMPONENTE ---
+const resumenTicketSnapshot = ref({
+  totalGravada: 0,
+  totalPagar: 0
+});
 const initialLoading = ref(true);
 const loading = ref(false);
 const error = ref(null);
@@ -924,6 +1052,20 @@ const validationErrors = computed(() => {
   return errors;
 });
 
+const editDialog = ref(false);
+const editedItemIndex = ref(-1);
+const editedItem = ref({
+  descripcion: '',
+  tipoItem: 1,
+  uniMedida: 59,
+  cantidad: 1,
+  precio_unitario: 0,
+  esExento: false,
+  // ... otros campos
+});
+
+
+
 // --- WATCHERS ---
 watch(searchTerm, (newVal) => {
   clearTimeout(searchTimeout);
@@ -1019,6 +1161,7 @@ onMounted(async () => {
         ]);
         documentTypes.value = types;
         locations.value = fetchedLocations;
+        await cargarClientePorDefecto();
     } catch (err) {
         notificationStore.showNotification({ message: 'Error al inicializar la página.', color: 'error' });
     } finally {
@@ -1026,28 +1169,70 @@ onMounted(async () => {
     }
 });
 
+
 function addItem() {
+    // 1. Manejo de Exención (Tu lógica actual)
     if (clienteEsExentoGlobal.value) {
         newItem.value.esExento = true;
     }
+
+    // 2. Validaciones
     const desc = newItem.value.descripcion || '';
-    if (desc.trim() === '' || newItem.value.cantidad <= 0 || newItem.value.precio_unitario <= 0) {
+    
+    // Nota: Convertimos a números para asegurar validación correcta
+    const cant = parseFloat(newItem.value.cantidad);
+    const precio = parseFloat(newItem.value.precio_unitario);
+
+    if (desc.toString().trim() === '' || cant <= 0 || precio < 0) {
         notificationStore.showNotification({
-            message: 'La descripción, cantidad y precio deben ser mayores a cero.',
+            message: 'La descripción es obligatoria y la cantidad debe ser mayor a cero.',
             color: 'warning'
         });
         return;
     }
-    form.value.items.push({ ...newItem.value });
+
+    // 3. --- LÓGICA DE AGRUPACIÓN (NUEVO) ---
+    let indexExistente = -1;
+
+    // Solo buscamos duplicados si el ítem TIENE CÓDIGO (es un producto, no servicio libre)
+    if (newItem.value.codigo) {
+        indexExistente = form.value.items.findIndex(item => 
+            item.codigo === newItem.value.codigo
+        );
+    }
+
+    if (indexExistente !== -1) {
+        // CASO A: YA EXISTE -> SUMAMOS LA CANTIDAD
+        // Convertimos a float para evitar que "1" + "1" sea "11"
+        const nuevaCantidad = parseFloat(form.value.items[indexExistente].cantidad) + cant;
+        form.value.items[indexExistente].cantidad = nuevaCantidad;
+        
+        // (Opcional) Actualizamos el precio unitario por si cambió en el catálogo, 
+        // o puedes dejar el viejo. Aquí actualizo al más reciente:
+        form.value.items[indexExistente].precio_unitario = precio;
+
+    } else {
+        // CASO B: NO EXISTE -> AGREGAMOS NUEVA FILA
+        form.value.items.push({ 
+            ...newItem.value,
+            cantidad: cant, // Aseguramos que se guarde como número
+            precio_unitario: precio
+        });
+    }
+
+    // 4. Limpieza (Tu lógica actual mejorada)
     newItem.value = { 
         descripcion: '', 
-        cantidad: 1, 
+        cantidad: 1,      // Reiniciamos a 1 para el siguiente escaneo
         precio_unitario: 0, 
         tipoItem: 1, 
         uniMedida: 59,
         esExento: clienteEsExentoGlobal.value, 
         codigo: null
     };
+    
+    // 5. (Opcional) Devolver el foco al buscador para seguir escaneando rápido
+    // document.getElementById('mi-input-buscador')?.focus();
 }
 
 function removeItem(index) {
@@ -1102,12 +1287,18 @@ async function submitDTE() {
     });
 
     if (response.estado === 'PROCESADO') {
+
+      await prepararImprimir(response, payload.tipo_dte);
+
       resultDialog.value = {
         show: true, success: true, title: 'Transmisión Exitosa',
         message: 'El Documento Tributario Electrónico ha sido procesado y aceptado por el Ministerio de Hacienda.',
         details: `Nº Control: ${response.numeroControl}`
       };
     } else if (response.estado === 'CONTINGENCIA' || response.estado === 'CONTINGENCIA_PENDIENTE') {
+      
+      await prepararImprimir(response, payload.tipo_dte);
+      
       resultDialog.value = {
         show: true, success: true, title: 'Documento en Contingencia',
         message: 'No hubo conexión con Hacienda. El documento se guardó correctamente y se enviará de forma automática más tarde.',
@@ -1359,4 +1550,129 @@ function productSelected(value) {
   }
 }
 
+// Función reutilizable para manejar la impresión
+async function prepararImprimir(response, tipoDte) {
+  if (!['01', '03'].includes(tipoDte)) return;
+
+  const empresaConfig = authStore.user?.empresa?.configuracion || {};
+  const imprimirAuto = empresaConfig.imprimir_automaticamente_ticket ?? false;
+
+  if (!imprimirAuto) {
+      console.log("Impresión automática omitida por configuración.");
+      return;
+  }
+
+  // A. Llenamos datos de cabecera
+  datosFacturaExitosa.value = {
+    codigoGeneracion: response.codigoGeneracion,
+    numeroControl: response.numeroControl,
+    selloRecibido: response.selloRecibido || null,
+    fhProcesamiento: response.fhProcesamiento || new Date().toLocaleString(),
+    tipoDte: tipoDte
+  };
+
+  // B. LLENAMOS EL SNAPSHOT (Usando .value explícitamente)
+  // Importante: Usamos '|| 0' por si acaso alguna variable es undefined
+  resumenTicketSnapshot.value = {
+    totalGravada: parseFloat(subtotales.value.subTotal || 0),
+    iva: parseFloat(subtotales.value.iva || 0), // <--- NUEVO
+    retencion: parseFloat(ivaRetenidoCalculado.value || 0) + parseFloat(rentaRetenidaCalculada.value || 0), // <--- NUEVO
+    totalPagar: parseFloat(totalAPagar.value || 0)
+  };
+
+  // C. Esperamos al DOM y mandamos imprimir
+  await nextTick();
+  setTimeout(() => {
+    window.print();
+  }, 500);
+}
+
+function editItem(item, index) {
+  editedItemIndex.value = index;
+  // Clonamos el ítem para no editarlo en tiempo real en la tabla (hasta guardar)
+  editedItem.value = { ...item }; 
+  editDialog.value = true;
+}
+
+function saveEdit() {
+  if (editedItemIndex.value > -1) {
+    // Actualizamos el ítem en la lista principal
+    Object.assign(form.value.items[editedItemIndex.value], editedItem.value);
+  }
+  closeEdit();
+}
+
+function closeEdit() {
+  editDialog.value = false;
+  nextTick(() => {
+    editedItem.value = { ...newItem.value }; // Resetear o dejar vacío
+    editedItemIndex.value = -1;
+  });
+}
+
+async function cargarClientePorDefecto() {
+  // Si ya hay un cliente seleccionado (ej. al editar borrador), no hacemos nada
+  if (form.value.cliente?.id) return;
+
+  try {
+    // ESTRATEGIA: Buscamos por el nombre común "Varios" o "Consumidor Final"
+    // Si en tu BD se llama diferente, cambia este string.
+    const query = 'Varios'; 
+    
+    const response = await $api('/api/clients', {
+      params: { search: query, per_page: 1 }
+    });
+
+    // Asumiendo que tu API devuelve { data: [...] } o un array directo
+    const clientes = response.data || response;
+
+    if (clientes.length > 0) {
+      // Tomamos el primero que encuentre
+      // (Idealmente tu backend debería devolver el que tenga is_generic = 1)
+      const clienteDefault = clientes[0];
+      
+      console.log("Cliente por defecto asignado:", clienteDefault.nombre);
+      form.value.cliente = clienteDefault;
+    }
+  } catch (error) {
+    console.error("No se pudo cargar el cliente por defecto:", error);
+  }
+}
+
 </script>
+
+<style scoped>
+/* Centrar el texto dentro del input de Vuetify */
+.centered-input :deep(input) {
+  text-align: center;
+}
+
+/* (Opcional) Ocultar las flechitas de subir/bajar número para que se vea más limpio */
+.centered-input :deep(input::-webkit-outer-spin-button),
+.centered-input :deep(input::-webkit-inner-spin-button) {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Ajuste para Selects dentro de tabla */
+.compact-select :deep(.v-field__input) {
+  font-size: 13px;
+  padding-top: 0;
+  padding-bottom: 0;
+  min-height: 32px;
+}
+
+/* Ajuste para Inputs numéricos dentro de tabla */
+.centered-input :deep(input) {
+  text-align: center;
+  font-size: 13px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* Reducir padding de las celdas para ganar espacio */
+.v-table--density-compact > .v-table__wrapper > table > tbody > tr > td {
+  padding: 0 8px;
+  height: 48px; /* Altura fija cómoda */
+}
+</style>
