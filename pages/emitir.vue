@@ -1,769 +1,777 @@
 <template>
-  <v-container>
-    <h1 class="mb-4">Emitir Nuevo Documento Tributario</h1>
-
-    <v-overlay :model-value="initialLoading" class="align-center justify-center" persistent>
+  <div v-if="!authStore.user?.empresa" class="d-flex justify-center align-center" style="height: 80vh;">
+    <div class="text-center">
       <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
-    </v-overlay>
-
-    <!-- dialogo para indicar si se transmite o no -->
-    <v-dialog v-model="resultDialog.show" persistent max-width="600px">
-      <v-card :color="resultDialog.success ? 'green-lighten-5' : 'red-lighten-5'">
-        <v-card-title class="d-flex align-center">
-          <v-icon 
-            :icon="resultDialog.success ? 'mdi-check-circle-outline' : 'mdi-alert-circle-outline'" 
-            :color="resultDialog.success ? 'success' : 'error'" 
-            class="mr-3"
-            size="large"
-          ></v-icon>
-          <span class="text-h5">{{ resultDialog.title }}</span>
-        </v-card-title>
-        
-        <v-card-text class="text-body-1 pt-4">
-          {{ resultDialog.message }}
-          <p v-if="resultDialog.details" class="text-caption mt-3">
-            <strong>Detalles:</strong> {{ resultDialog.details }}
-          </p>
-        </v-card-text>
-        
-        <v-card-actions>
-          <v-spacer></v-spacer>
-
-          <v-btn color="primary" variant="text" @click="closeResultDialog">
-            Entendido
-          </v-btn>
-
-          <v-btn
-            v-if="!resultDialog.success"
-            color="secondary"
-            variant="flat"
-            @click="retrySubmit"
-          >
-            Reintentar
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <v-dialog v-model="dialog.show" persistent max-width="800px">
-      <v-card>
-        <v-card-title><span class="text-h5">Nuevo Cliente</span></v-card-title>
-        <v-card-text>
-          <v-row>
-            <v-col cols="12" md="8"><v-text-field label="Nombre Completo o Razón Social*" v-model="dialog.newClient.nombre" required></v-text-field></v-col>
-            <v-col cols="12" md="4"><v-text-field label="Nombre Comercial" v-model="dialog.newClient.nombre_comercial"></v-text-field></v-col>
-            <v-col cols="12" md="4"><v-text-field label="NIT" v-model="dialog.newClient.nit"></v-text-field></v-col>
-            <v-col cols="12" md="4"><v-text-field label="NRC" v-model="dialog.newClient.nrc"></v-text-field></v-col>
-            <v-col cols="12" md="4"><v-text-field label="Teléfono" v-model="dialog.newClient.telefono"></v-text-field></v-col>
-            <v-col cols="12" md="4"><v-text-field label="Código de Actividad" v-model="dialog.newClient.cod_actividad"></v-text-field></v-col>
-            <v-col cols="12" md="8"><v-text-field label="Descripción de Actividad" v-model="dialog.newClient.desc_actividad"></v-text-field></v-col>
-            <v-col cols="12"><v-text-field label="Correo Electrónico" v-model="dialog.newClient.correo" type="email"></v-text-field></v-col>
-          </v-row>
-          <v-card-text>
-            <v-row>
-              <v-divider class="my-3"></v-divider>
-              <v-col cols="12" md="6">
-                <v-select
-                  label="Otro Tipo de Documento (Para NRE)"
-                  v-model="dialog.newClient.tipo_documento"
-                  :items="[{title:'DUI', value:'13'}, {title:'Pasaporte', value:'03'}, {title:'Otro', value:'37'}]"
-                ></v-select>
-              </v-col>
-              <v-col cols="12" md="6">
-                <v-text-field 
-                  label="Número del Otro Documento"
-                  v-model="dialog.newClient.num_documento"
-                ></v-text-field>
-              </v-col>
-              <v-divider class="my-3"></v-divider>
-
-            </v-row>
-            </v-card-text>
-          <h4 class="mt-4">Dirección</h4>
-          <v-divider class="mb-2"></v-divider>
+      <p class="mt-4 text-grey">Cargando configuración...</p>
+    </div>
+  </div>
+  <div v-else>
+    <v-container>
+      <h1 class="mb-4">Emitir Nuevo Documento Tributario</h1>
+  
+      <v-overlay :model-value="initialLoading" class="align-center justify-center" persistent>
+        <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
+      </v-overlay>
+  
+      <!-- dialogo para indicar si se transmite o no -->
+      <v-dialog v-model="resultDialog.show" persistent max-width="600px">
+        <v-card :color="resultDialog.success ? 'green-lighten-5' : 'red-lighten-5'">
+          <v-card-title class="d-flex align-center">
+            <v-icon 
+              :icon="resultDialog.success ? 'mdi-check-circle-outline' : 'mdi-alert-circle-outline'" 
+              :color="resultDialog.success ? 'success' : 'error'" 
+              class="mr-3"
+              size="large"
+            ></v-icon>
+            <span class="text-h5">{{ resultDialog.title }}</span>
+          </v-card-title>
           
-          <v-row>
-            <v-col cols="12" md="6">
-              <v-select label="Departamento" v-model="dialog.newClient.direccion.departamento" :items="locations" item-title="nombre" item-value="codigo"></v-select>
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-select label="Municipio" v-model="dialog.newClient.direccion.municipio" :items="filteredMunicipios" item-title="nombre" item-value="codigo" :disabled="!dialog.newClient.direccion.departamento"></v-select>
-            </v-col>
-          </v-row>
-          <v-textarea label="Complemento (Calle, # Casa, Colonia...)" v-model="dialog.newClient.direccion.complemento" rows="2"></v-textarea>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey-darken-1" variant="text" @click="closeDialog">Cancelar</v-btn>
-          <v-btn color="blue-darken-1" variant="text" @click="saveNewClient" :loading="dialog.loading">Guardar Cliente</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <v-card class="mt-4" :loading="loading" :disabled="initialLoading">
-      <v-card-text>
-        <v-form @submit.prevent="submitDTE">
-          <v-row>
-            
-            <v-col cols="12" md="4">
-              <v-select v-model="form.tipo_dte" :items="documentTypes" item-title="title" item-value="value" label="Tipo de Documento" variant="outlined"></v-select>
-            </v-col>
-
-            <v-col cols="12" md="4">
-              <v-select
-                v-model="form.punto_de_venta_id"
-                :items="puntosDeVentaPermitidos"
-                item-title="nombre"
-                item-value="id"
-                label="Punto de Venta*"
-                variant="outlined"
-                :rules="[v => !!v || 'Debe seleccionar un punto de venta']"
-                :disabled="puntosDeVentaPermitidos.length <= 1"
-              ></v-select>
-            </v-col>
-
-            <v-col v-if="form.tipo_dte !== '04'" cols="12" md="4">
-              <v-select v-model="form.condicion_operacion" :items="[{title: 'Contado', value: '1'}, {title: 'A Crédito', value: '2'}, {title: 'Otro', value: '3'}]" label="Condición de la Operación" variant="outlined"></v-select>
-            </v-col>
-          </v-row>
-
-          <v-row v-if="form.condicion_operacion === '2'">
-            <v-col cols="12" md="6">
-              <v-select
-                v-model="form.plazo"
-                :items="plazos"
-                label="Plazo del Crédito*"
-                variant="outlined"
-                :rules="[rules.required]"
-              ></v-select>
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model.number="form.periodo"
-                label="Período (ej. 30, 60, 90)*"
-                type="number"
-                variant="outlined"
-                :rules="[rules.required]"
-              ></v-text-field>
-            </v-col>
-          </v-row>
-
-          <v-row v-if="form.tipo_dte === '05' || form.tipo_dte === '06'" class="mt-4">
-            <v-col cols="12">
-              <v-autocomplete
-                v-model="form.documento_relacionado"
-                @update:modelValue="handleDocumentoSeleccionado" v-model:search="searchTermDoc"
-                :items="searchResultsDoc"
-                :loading="searchLoadingDoc"
-                item-title="numero_control"
-                return-object
-                label="Buscar CCFE a afectar (por Nº Control o Código Generación)*"
-                placeholder="Escriba para buscar el CCFE..."
-                variant="outlined"
-                clearable
-                no-filter
-              >
-                <template v-slot:item="{ props, item }">
-                  <v-list-item
-                    v-bind="props"
-                    :subtitle="`Cod. Gen: ${item.raw.codigo_generacion.slice(0, 15)}...`"
-                    :title="`Nº Control: ${item.raw.numero_control}`"
-                  ></v-list-item>
-                </template>
-              </v-autocomplete>
-            </v-col>
-          </v-row>
-
-          <v-autocomplete
-            v-model="form.cliente"
-            v-model:search="searchTerm"
-            :items="searchResults"
-            :loading="searchLoading"
-            :no-filter="true"
-            item-title="nombre"
-            return-object
-            label="Cliente"
-            placeholder="Escriba para buscar..."
-            variant="outlined"
-            class="mt-2"
-            clearable
-          >
-            <template v-slot:item="{ props, item }">
-              <v-list-item v-bind="props" :title="item.raw.nombre" lines="two">
-                </v-list-item>
-            </template>
-
-            <template v-slot:append>
-              <v-tooltip location="top">
-                <template v-slot:activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    color="primary"
-                    variant="tonal"
-                    @click="dialog.show = true"
-                    :icon="$vuetify.display.xs"
-                  >
-                    <v-icon :start="$vuetify.display.smAndUp">mdi-account-plus</v-icon>
-                    <span class="d-none d-sm-inline">Nuevo Cliente</span>
-                  </v-btn>
-                </template>
-                <span>Agregar nuevo cliente</span>
-              </v-tooltip>
-            </template>
-          </v-autocomplete>
+          <v-card-text class="text-body-1 pt-4">
+            {{ resultDialog.message }}
+            <p v-if="resultDialog.details" class="text-caption mt-3">
+              <strong>Detalles:</strong> {{ resultDialog.details }}
+            </p>
+          </v-card-text>
           
-          
-          <v-card 
-            v-if="['03', '05', '06'].includes(form.tipo_dte) && form.cliente?.id"
-            variant="tonal"
-            class="mt-4 mb-6 pa-3"
-          >
-            </v-card>
-
-          <v-card
-            v-if="form.tipo_dte === '14' && form.cliente"
-            variant="tonal"
-            class="mt-4 mb-6 pa-3"
-          >
-            <v-card-title class="pa-0">Datos del Sujeto Excluido</v-card-title>
-            <p class="text-caption">Para este documento, solo se requiere el nombre y número de documento del cliente.</p>
-            <v-row dense class="mt-2">
-              <v-col cols="12" md="6">
-                <p class="text-caption">Nombre</p>
-                <p :class="!form.cliente.nombre && 'text-error font-weight-bold'">
-                  {{ form.cliente.nombre || 'REQUERIDO' }}
-                </p>
-              </v-col>
-              <v-col cols="12" md="6">
-                <p class="text-caption">Documento</p>
-                <p :class="!form.cliente.numDocumento && 'text-error font-weight-bold'">
-                  {{ form.cliente.numDocumento || 'REQUERIDO' }}
-                </p>
-              </v-col>
-            </v-row>
-          </v-card>
-
-          <v-card 
-            v-if="form.tipo_dte === '03' && form.cliente?.id"
-            variant="tonal"
-            class="mt-4 mb-6 pa-3"
-          >
-            <div class="d-flex justify-space-between align-center mb-2">
-              <v-card-title class="pa-0">Datos del Receptor (CCFE)</v-card-title>
-              <v-btn size="small" variant="text" color="primary">Editar Cliente</v-btn>
-            </div>
-            
-            <v-row dense>
-              <v-col cols="12" md="4">
-                <p class="text-caption">NIT</p>
-                <p :class="!form.cliente.nit && 'text-error font-weight-bold'">{{ form.cliente.nit || 'REQUERIDO' }}</p>
-              </v-col>
-              <v-col cols="12" md="4">
-                <p class="text-caption">NRC</p>
-                <p :class="!form.cliente.nrc && 'text-error font-weight-bold'">{{ form.cliente.nrc || 'REQUERIDO' }}</p>
-              </v-col>
-              <v-col cols="12" md="4">
-                <p class="text-caption">Nombre Comercial</p>
-                <p :class="!form.cliente.nombre_comercial && 'text-error font-weight-bold'">{{ form.cliente.nombre_comercial || 'REQUERIDO' }}</p>
-              </v-col>
-              <v-col cols="12" md="8">
-                <p class="text-caption">Actividad Económica</p>
-                <p :class="!form.cliente.desc_actividad && 'text-error font-weight-bold'">{{ form.cliente.desc_actividad || 'REQUERIDO' }}</p>
-              </v-col>
-              <v-col cols="12" md="4">
-                <p class="text-caption">Correo Electrónico</p>
-                <p :class="!form.cliente.correo && 'text-error font-weight-bold'">{{ form.cliente.correo || 'REQUERIDO' }}</p>
-              </v-col>
-            </v-row>
-          </v-card>
-
-          <!-- <v-row>
-            <v-col>
-              <v-checkbox
-                v-model="esVentaTercero"
-                label="¿Es una Venta por Cuenta de Tercero?"
-              ></v-checkbox>
-            </v-col>
-          </v-row> -->
-
-          <!-- <v-card v-if="esVentaTercero" variant="tonal" class="mb-6 pa-4">
-            <h3 class="mb-4 text-h6">Datos del Tercero (Mandante)</h3>
-            <v-autocomplete
-              v-model="mandante"
-              :items="mandanteResults"
-              v-model:search="mandanteSearchTerm"
-              :loading="mandanteSearchLoading"
-              item-title="nombre"
-              return-object
-              label="Buscar Tercero (por Nombre, NIT o NRC)"
-              variant="outlined"
-              placeholder="Escriba para buscar un cliente..."
-              no-filter
-              clearable
+          <v-card-actions>
+            <v-spacer></v-spacer>
+  
+            <v-btn color="primary" variant="text" @click="closeResultDialog">
+              Entendido
+            </v-btn>
+  
+            <v-btn
+              v-if="!resultDialog.success"
+              color="secondary"
+              variant="flat"
+              @click="retrySubmit"
             >
-              <template v-slot:item="{ props, item }">
-                <v-list-item v-bind="props" :title="item.raw.nombre" :subtitle="`NIT: ${item.raw.nit}`"></v-list-item>
-              </template>
-            </v-autocomplete>
-          </v-card> -->
-          <!-- <v-divider class="my-6"></v-divider> -->
-          
-          <div v-if="form.tipo_dte === '03' && form.cliente?.id" class="mb-4">
-            <p class="text-caption">Datos del Cliente Seleccionado:</p>
-            <v-row dense>
-              <v-col cols="12" md="4"><v-text-field :model-value="form.cliente.nit" label="NIT" variant="underlined" readonly density="compact"></v-text-field></v-col>
-              <v-col cols="12" md="4"><v-text-field :model-value="form.cliente.nrc" label="NRC" variant="underlined" readonly density="compact"></v-text-field></v-col>
-              <v-col cols="12" md="4"><v-text-field :model-value="form.cliente.correo" label="Correo" variant="underlined" readonly density="compact"></v-text-field></v-col>
-            </v-row>
-          </div>
-
-          <div v-if="form.tipo_dte !== '07'">
-            <h3 class="mt-8">Ítems</h3>
-            <v-divider class="mb-4"></v-divider>
-            <!-- <v-row v-if="(form.tipo_dte === '03' || form.tipo_dte === '01') && form.cliente?.categoria_contribuyente === 'GRANDE'">
-                <v-col cols="12">
-                    <v-switch
-                        v-model="aplicaRetencion"
-                        label="Aplicar Retención 1% (Ventas gravadas >= $100)"
-                        color="primary"
-                        hide-details
-                    ></v-switch>
-                </v-col>
-            </v-row> -->
-            <v-row align="center">
-              <v-col cols="12" md="4">
-                <v-combobox
-                    v-if="authStore.user?.empresa?.usa_inventario"
-                    v-model="newItem.descripcion"
-                    label="Buscar por Nombre, SKU o Escanear Barcode"
-                    placeholder="Escribe o escanea aquí..."
-                    prepend-inner-icon="mdi-barcode-scan"
-                    :items="searchedProducts"
-                    item-title="nombre"
-                    item-value="id"
-                    @update:search="searchProducts"
-                    :loading="isSearching"
-                    no-filter
-                    @update:model-value="productSelected"
-                    @keydown.enter.prevent 
-                    variant="outlined"
-                    density="compact"
-                    hide-details="auto"
-                    return-object
-                    clearable
-                >
-                  <template v-slot:prepend-inner>
-                    <v-chip
-                        v-if="newItem.codigo"
-                        class="ma-1"
-                        color="blue-grey-lighten-4"
-                        text-color="blue-grey-darken-3"
-                        size="small"
-                        label
-                        variant="flat"
-                    >
-                        <strong>{{ newItem.codigo }}</strong>
-                    </v-chip>
-                </template>
-
-                  <template v-slot:item="{ props, item }">
-                      <v-list-item v-bind="props" lines="two">
-                          <v-list-item-title class="font-weight-bold">
-                              {{ item.raw.nombre }}
-                          </v-list-item-title>
-                          
-                          <v-list-item-subtitle class="d-flex align-center mt-1">
-                              <span v-if="item.raw.barcode" class="mr-3 text-high-emphasis">
-                                  <v-icon size="x-small" start>mdi-barcode</v-icon> 
-                                  {{ item.raw.barcode }}
-                              </span>
-                              <span v-else-if="item.raw.sku" class="mr-3 text-medium-emphasis">
-                                  <v-icon size="x-small" start>mdi-label-outline</v-icon> 
-                                  SKU: {{ item.raw.sku }}
-                              </span>
-                              
-                              <v-chip size="x-small" color="green" class="mr-2" variant="outlined">
-                                  ${{ parseFloat(item.raw.precio_unitario).toFixed(2) }}
-                              </v-chip>
-                              
-                              <span class="text-caption text-disabled">
-                                  (Int: {{ item.raw.codigo }})
-                              </span>
-                          </v-list-item-subtitle>
-                      </v-list-item>
-                  </template>
-                  
-                  <template v-slot:no-data>
-                      <v-list-item>
-                          <v-list-item-title>
-                              No se encontraron productos.
-                          </v-list-item-title>
-                          <v-list-item-subtitle>
-                              Presiona Enter para agregar como texto libre.
-                          </v-list-item-subtitle>
-                      </v-list-item>
-                  </template>
-                </v-combobox>
-                <v-text-field
-                  v-else
-                  v-model="newItem.descripcion"
-                  label="Descripción"
-                  variant="outlined"
-                  density="compact"
-                  hide-details="auto"
-                ></v-text-field>
-              </v-col>
-              <v-col cols="6" md="3" lg="2">
-                <v-select v-model="newItem.tipoItem" :items="tiposDeItem" label="Tipo" variant="outlined" density="compact" hide-details="auto"></v-select>
-              </v-col>
-              
-              <v-col cols="6" md="3" lg="2">
-                <v-select v-model="newItem.uniMedida" :items="unidadesDeMedida" item-title="title" item-value="value" label="U. Medida" variant="outlined" density="compact" hide-details="auto"></v-select>
-              </v-col>
-              
-              <v-col cols="12" md="2">
-                <v-text-field v-model.number="newItem.cantidad" label="Cantidad" type="number" variant="outlined" density="compact" hide-details="auto"></v-text-field>
-              </v-col>
-              
-              <v-col cols="12" md="3" lg="2">
-                <v-text-field v-model.number="newItem.precio_unitario" :label="precioUnitarioLabel" type="number" prefix="$" variant="outlined" density="compact" hide-details="auto"></v-text-field>
-              </v-col>
-              
-              <v-col cols="12" sm="4" md="3" class="d-flex align-center mt-2 mt-sm-0">
-                <v-chip
-                  v-if="clienteEsExentoGlobal"
-                  color="teal"
-                  text-color="white"
-                  label
-                  prepend-icon="mdi-check-decagram"
-                  class="mr-4"
-                >
-                  Exento
-                </v-chip>
-                
-                <v-checkbox
-                  v-else
-                  v-model="newItem.esExento"
-                  label="Venta Exenta"
-                  color="primary"
-                  hide-details
-                ></v-checkbox>
-                
-                <v-btn class="ml-auto" color="primary" @click="addItem" prepend-icon="mdi-plus" size="large">Añadir</v-btn>
-              </v-col>
-            </v-row>
-
-            <v-table v-if="form.items.length > 0" density="compact" class="mt-4 border">
-              <thead>
-                <tr>
-                  <th class="text-left">Descripción</th>
-                  <th class="text-center">Tipo</th>
-                  <th class="text-center">U. Medida</th>
-                  <th class="text-center">Cantidad</th>
-                  <th class="text-center">P. Unitario</th>
-                  <th class="text-right">Subtotal</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(item, index) in form.items" :key="index">
-                  <td>{{ item.descripcion }}</td>
-                  <td class="text-caption text-center" style="vertical-align: middle;">
-                    {{ item.tipoItem === 1 ? 'Bien' : 'Servicio' }}
-                  </td>
-                   
-                  <td class="text-caption text-center" style="vertical-align: middle;">
-                    {{ getUnidadMedidaNombre(item.uniMedida) }}
-                  </td>
-                   
-                  <td class="text-caption text-center" style="vertical-align: middle;">
-                    {{ item.cantidad }}
-                  </td>
-                   <!-- <td style="width: 120px;">
-                      <v-text-field
-                        v-model.number="item.cantidad"
-                        type="number"
-                        variant="underlined"
-                        density="compact"
-                        hide-details
-                        min="0.01"
-                        class="centered-input"
-                      ></v-text-field>
-                    </td> -->
-                   <td class="text-caption text-center" style="vertical-align: middle;">
-                    ${{ item.precio_unitario.toFixed(2) }}
-                   </td>
-                   
-                  <td class="text-caption text-right" style="vertical-align: middle;">
-                    ${{ (item.cantidad * item.precio_unitario).toFixed(2) }}
-                  </td>
-                  <!-- <td><v-btn icon="mdi-delete" variant="text" color="error" size="x-small" @click="removeItem(index)"></v-btn></td> -->
-                  <td class="d-flex align-center justify-end">
-                    <v-btn icon="mdi-pencil" variant="text" color="primary" size="small" @click="editItem(item, index)"></v-btn>
-                    <v-btn icon="mdi-delete" variant="text" color="error" size="small" @click="removeItem(index)"></v-btn>
-                  </td>
-                </tr>
-              </tbody>
-              <tfoot v-if="subtotales.total > 0">
-        
-                <tr v-if="form.tipo_dte !== '01'">
-                    <td colspan="5" class="text-center font-weight-bold">SUBTOTAL</td>
-                    <td class="text-center font-weight-bold">${{ subtotales.subTotal.toFixed(2) }}</td>
-                    <td></td>
-                </tr>
-
-                <tr v-if="form.tipo_dte === '03'">
-                    <td colspan="5" class="text-center font-weight-bold">IVA (13%)</td>
-                    <td class="text-center font-weight-bold">${{ subtotales.iva.toFixed(2) }}</td>
-                    <td></td>
-                </tr>
-
-                <tr v-if="aplicaRetencion">
-                    <td colspan="5" class="text-center font-weight-bold text-error">IVA RETENIDO (1%)</td>
-                    <td class="text-center font-weight-bold text-error">- ${{ ivaRetenidoCalculado.toFixed(2) }}</td>
-                    <td></td>
-                </tr>
-
-                <tr v-if="rentaRetenidaCalculada > 0">
-                  <td colspan="5" class="text-center font-weight-bold text-error">RENTA RETENIDA (10%)</td>
-                  <td class="text-center font-weight-bold text-error">- ${{ rentaRetenidaCalculada.toFixed(2) }}</td>
-                  <td></td>
-                </tr>
-
-                <tr v-if="aplicaRetencion">
-                    <td colspan="5" class="text-center">
-                        <v-chip color="info" label size="small">
-                            <v-icon start icon="mdi-information-outline"></v-icon>
-                            Retención Automática (Gran Contribuyente)
-                        </v-chip>
-                    </td>
-                    <td class="text-center font-weight-bold text-error">- ${{ ivaRetenidoCalculado.toFixed(2) }}</td>
-                    <td></td>
-                </tr>
-                
-                <tr>
-                    <td colspan="5" class="text-center text-h6 font-weight-black">
-                        {{ aplicaRetencion ? 'TOTAL A PAGAR' : 'TOTAL' }}
-                    </td>
-                    <td class="text-center text-h6 font-weight-black">${{ totalAPagar.toFixed(2) }}</td>
-                    <td></td>
-                </tr>
-
-            </tfoot>
-            </v-table>
-          </div>
-          <v-card class="mt-6" v-if="form.tipo_dte === '07'">
-          <v-card-title>Documentos a los que se Aplica Retención</v-card-title>
-          <v-divider></v-divider>
+              Reintentar
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+  
+      <v-dialog v-model="dialog.show" persistent max-width="800px">
+        <v-card>
+          <v-card-title><span class="text-h5">Nuevo Cliente</span></v-card-title>
           <v-card-text>
-            <v-table>
-              <thead>
-                <tr>
-                  <th>Tipo DTE</th>
-                  <th>Nº Documento</th>
-                  <th>Monto Sujeto Ret.</th>
-                  <th class="text-center">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(doc, index) in form.documentos_retenidos" :key="index">
-                  <td>{{ doc.tipoDte }}</td>
-                  <td>{{ doc.numeroDocumento }}</td>
-                  <td>${{ doc.montoSujetoGrav }}</td>
-                  <td>
-                    <v-btn icon="mdi-delete" size="x-small" color="error" @click="eliminarDocumentoRetenido(index)"></v-btn>
-                  </td>
-                </tr>
-                <tr v-if="form.documentos_retenidos.length === 0">
-                    <td colspan="4" class="text-center">Añada un documento para aplicar retención...</td>
-                </tr>
-              </tbody>
-            </v-table>
-
-            <v-divider class="my-4"></v-divider>
-
-            <p class="mb-4 font-weight-bold">Añadir Documento:</p>
             <v-row>
-                <v-col cols="12" md="3">
-                    <v-select label="Tipo DTE afectado" :items="[{title: 'CCF', value: '03'}]" v-model="nuevoDocRetenido.tipoDte" variant="outlined"></v-select>
-                </v-col>
-                <v-col cols="12" md="3">
-                    <v-select label="Tipo Generación" :items="[{title: 'Electrónico', value: 2}, {title: 'Físico', value: 1}]" v-model="nuevoDocRetenido.tipoDoc" variant="outlined"></v-select>
-                </v-col>
-                <v-col cols="12" md="6">
-                    <v-text-field label="Nº Documento o Código Generación" v-model="nuevoDocRetenido.numeroDocumento" variant="outlined"></v-text-field>
-                </v-col>
-                <v-col cols="12" md="3">
-                    <v-text-field type="date" label="Fecha Emisión" v-model="nuevoDocRetenido.fechaEmision" variant="outlined"></v-text-field>
-                </v-col>
-                <v-col cols="12" md="3">
-                    <v-text-field type="number" label="Monto Sujeto a Retención" v-model="nuevoDocRetenido.montoSujetoGrav" prefix="$" variant="outlined"></v-text-field>
-                </v-col>
-                <v-col cols="12" md="6">
-                    <v-text-field label="Descripción" v-model="nuevoDocRetenido.descripcion" variant="outlined"></v-text-field>
-                </v-col>
+              <v-col cols="12" md="8"><v-text-field label="Nombre Completo o Razón Social*" v-model="dialog.newClient.nombre" required></v-text-field></v-col>
+              <v-col cols="12" md="4"><v-text-field label="Nombre Comercial" v-model="dialog.newClient.nombre_comercial"></v-text-field></v-col>
+              <v-col cols="12" md="4"><v-text-field label="NIT" v-model="dialog.newClient.nit"></v-text-field></v-col>
+              <v-col cols="12" md="4"><v-text-field label="NRC" v-model="dialog.newClient.nrc"></v-text-field></v-col>
+              <v-col cols="12" md="4"><v-text-field label="Teléfono" v-model="dialog.newClient.telefono"></v-text-field></v-col>
+              <v-col cols="12" md="4"><v-text-field label="Código de Actividad" v-model="dialog.newClient.cod_actividad"></v-text-field></v-col>
+              <v-col cols="12" md="8"><v-text-field label="Descripción de Actividad" v-model="dialog.newClient.desc_actividad"></v-text-field></v-col>
+              <v-col cols="12"><v-text-field label="Correo Electrónico" v-model="dialog.newClient.correo" type="email"></v-text-field></v-col>
             </v-row>
+            <v-card-text>
+              <v-row>
+                <v-divider class="my-3"></v-divider>
+                <v-col cols="12" md="6">
+                  <v-select
+                    label="Otro Tipo de Documento (Para NRE)"
+                    v-model="dialog.newClient.tipo_documento"
+                    :items="[{title:'DUI', value:'13'}, {title:'Pasaporte', value:'03'}, {title:'Otro', value:'37'}]"
+                  ></v-select>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field 
+                    label="Número del Otro Documento"
+                    v-model="dialog.newClient.num_documento"
+                  ></v-text-field>
+                </v-col>
+                <v-divider class="my-3"></v-divider>
+  
+              </v-row>
+              </v-card-text>
+            <h4 class="mt-4">Dirección</h4>
+            <v-divider class="mb-2"></v-divider>
+            
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-select label="Departamento" v-model="dialog.newClient.direccion.departamento" :items="locations" item-title="nombre" item-value="codigo"></v-select>
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-select label="Municipio" v-model="dialog.newClient.direccion.municipio" :items="filteredMunicipios" item-title="nombre" item-value="codigo" :disabled="!dialog.newClient.direccion.departamento"></v-select>
+              </v-col>
+            </v-row>
+            <v-textarea label="Complemento (Calle, # Casa, Colonia...)" v-model="dialog.newClient.direccion.complemento" rows="2"></v-textarea>
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn color="primary" @click="agregarDocumentoRetenido">Añadir Documento</v-btn>
+            <v-btn color="grey-darken-1" variant="text" @click="closeDialog">Cancelar</v-btn>
+            <v-btn color="blue-darken-1" variant="text" @click="saveNewClient" :loading="dialog.loading">Guardar Cliente</v-btn>
           </v-card-actions>
         </v-card>
-        </v-form>
-      </v-card-text>
-      <v-divider></v-divider>
-      <v-card-actions class="pa-4 d-flex flex-column flex-sm-row align-center">
-        <div class="flex-grow-1 w-100 order-sm-first order-first">
-          <v-expand-transition>
-            <div :key="validationErrors.length">
-              <v-alert
-                v-if="validationErrors.length > 0"
-                type="warning"
-                variant="tonal"
-                density="compact"
-                class="text-body-2 text-sm-body-1"
-              >
-                <div class="font-weight-bold mb-1">Recuerde completar los siguientes datos para poder emitir:</div>
-                <ul class="pl-4">
-                  <li v-for="(error, i) in validationErrors" :key="i">
-                    {{ error }}
-                  </li>
-                </ul>
-              </v-alert>
-
-              <v-alert
-                v-else
-                type="success"
-                variant="tonal"
-                density="compact"
-                class="text-body-2 text-sm-body-1"
-              >
-                <div class="d-flex align-center font-weight-bold">
-                  <v-icon start>mdi-check-circle-outline</v-icon>
-                  ¡Todo listo para emitir su documento!
-                </div>
-              </v-alert>
-            </div>
-          </v-expand-transition>
-        </div>
-        <v-switch 
-            v-modeltch
-            v-if="authStore.user?.roles?.some(role => role.name === 'Admin')"
-            v-model="form.force_contingency"
-            color="orange-darken-3"
-            label="Enviar en Modo Contingencia"
-            hide-details
-            class="mb-4"
-          ></v-switch>
-        <div class="w-100 w-sm-auto mt-4 mt-sm-0 d-flex justify-center order-sm-last order-last">
-          <v-btn 
-            color="success" 
-            size="large" 
-            @click="submitDTE" 
-            :disabled="validationErrors.length > 0 || loading" 
-            :loading="loading"
-            block
-            max-width="300" 
-          >
-            Emitir Documento
-          </v-btn>
-        </div>
-      </v-card-actions>
-    </v-card>
-  </v-container>
-  <v-container>
-     <TicketDTE 
-        ref="ticketRef"
-        :dte-data="datosFacturaExitosa"
-        :items="form.items"
-        :receptor="form.cliente || { nombre: 'Clientes Varios' }"
-        
-        :emisor="authStore.user?.empresa || {}" 
-        
-        :resumen="resumenTicketSnapshot"
-      />
-
-     <v-dialog v-model="editDialog" max-width="500px">
-      <v-card>
-        <v-card-title>Editar Detalle</v-card-title>
+      </v-dialog>
+  
+      <v-card class="mt-4" :loading="loading" :disabled="initialLoading">
         <v-card-text>
-          <v-row dense>
-            <v-col cols="12">
-              <v-text-field 
-                v-model="editedItem.descripcion" 
-                label="Descripción" 
+          <v-form @submit.prevent="submitDTE">
+            <v-row>
+              
+              <v-col cols="12" md="4">
+                <v-select v-model="form.tipo_dte" :items="documentTypes" item-title="title" item-value="value" label="Tipo de Documento" variant="outlined"></v-select>
+              </v-col>
+  
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="form.punto_de_venta_id"
+                  :items="puntosDeVentaPermitidos"
+                  item-title="nombre"
+                  item-value="id"
+                  label="Punto de Venta*"
+                  variant="outlined"
+                  :rules="[v => !!v || 'Debe seleccionar un punto de venta']"
+                  :disabled="puntosDeVentaPermitidos.length <= 1"
+                ></v-select>
+              </v-col>
+  
+              <v-col v-if="form.tipo_dte !== '04'" cols="12" md="4">
+                <v-select v-model="form.condicion_operacion" :items="[{title: 'Contado', value: '1'}, {title: 'A Crédito', value: '2'}, {title: 'Otro', value: '3'}]" label="Condición de la Operación" variant="outlined"></v-select>
+              </v-col>
+            </v-row>
+  
+            <v-row v-if="form.condicion_operacion === '2'">
+              <v-col cols="12" md="6">
+                <v-select
+                  v-model="form.plazo"
+                  :items="plazos"
+                  label="Plazo del Crédito*"
+                  variant="outlined"
+                  :rules="[rules.required]"
+                ></v-select>
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model.number="form.periodo"
+                  label="Período (ej. 30, 60, 90)*"
+                  type="number"
+                  variant="outlined"
+                  :rules="[rules.required]"
+                ></v-text-field>
+              </v-col>
+            </v-row>
+  
+            <v-row v-if="form.tipo_dte === '05' || form.tipo_dte === '06'" class="mt-4">
+              <v-col cols="12">
+                <v-autocomplete
+                  v-model="form.documento_relacionado"
+                  @update:modelValue="handleDocumentoSeleccionado" v-model:search="searchTermDoc"
+                  :items="searchResultsDoc"
+                  :loading="searchLoadingDoc"
+                  item-title="numero_control"
+                  return-object
+                  label="Buscar CCFE a afectar (por Nº Control o Código Generación)*"
+                  placeholder="Escriba para buscar el CCFE..."
+                  variant="outlined"
+                  clearable
+                  no-filter
+                >
+                  <template v-slot:item="{ props, item }">
+                    <v-list-item
+                      v-bind="props"
+                      :subtitle="`Cod. Gen: ${item.raw.codigo_generacion.slice(0, 15)}...`"
+                      :title="`Nº Control: ${item.raw.numero_control}`"
+                    ></v-list-item>
+                  </template>
+                </v-autocomplete>
+              </v-col>
+            </v-row>
+  
+            <v-autocomplete
+              v-model="form.cliente"
+              v-model:search="searchTerm"
+              :items="searchResults"
+              :loading="searchLoading"
+              :no-filter="true"
+              item-title="nombre"
+              return-object
+              label="Cliente"
+              placeholder="Escriba para buscar..."
+              variant="outlined"
+              class="mt-2"
+              clearable
+            >
+              <template v-slot:item="{ props, item }">
+                <v-list-item v-bind="props" :title="item.raw.nombre" lines="two">
+                  </v-list-item>
+              </template>
+  
+              <template v-slot:append>
+                <v-tooltip location="top">
+                  <template v-slot:activator="{ props }">
+                    <v-btn
+                      v-bind="props"
+                      color="primary"
+                      variant="tonal"
+                      @click="dialog.show = true"
+                      :icon="$vuetify.display.xs"
+                    >
+                      <v-icon :start="$vuetify.display.smAndUp">mdi-account-plus</v-icon>
+                      <span class="d-none d-sm-inline">Nuevo Cliente</span>
+                    </v-btn>
+                  </template>
+                  <span>Agregar nuevo cliente</span>
+                </v-tooltip>
+              </template>
+            </v-autocomplete>
+            
+            
+            <v-card 
+              v-if="['03', '05', '06'].includes(form.tipo_dte) && form.cliente?.id"
+              variant="tonal"
+              class="mt-4 mb-6 pa-3"
+            >
+              </v-card>
+  
+            <v-card
+              v-if="form.tipo_dte === '14' && form.cliente"
+              variant="tonal"
+              class="mt-4 mb-6 pa-3"
+            >
+              <v-card-title class="pa-0">Datos del Sujeto Excluido</v-card-title>
+              <p class="text-caption">Para este documento, solo se requiere el nombre y número de documento del cliente.</p>
+              <v-row dense class="mt-2">
+                <v-col cols="12" md="6">
+                  <p class="text-caption">Nombre</p>
+                  <p :class="!form.cliente.nombre && 'text-error font-weight-bold'">
+                    {{ form.cliente.nombre || 'REQUERIDO' }}
+                  </p>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <p class="text-caption">Documento</p>
+                  <p :class="!form.cliente.numDocumento && 'text-error font-weight-bold'">
+                    {{ form.cliente.numDocumento || 'REQUERIDO' }}
+                  </p>
+                </v-col>
+              </v-row>
+            </v-card>
+  
+            <v-card 
+              v-if="form.tipo_dte === '03' && form.cliente?.id"
+              variant="tonal"
+              class="mt-4 mb-6 pa-3"
+            >
+              <div class="d-flex justify-space-between align-center mb-2">
+                <v-card-title class="pa-0">Datos del Receptor (CCFE)</v-card-title>
+                <v-btn size="small" variant="text" color="primary">Editar Cliente</v-btn>
+              </div>
+              
+              <v-row dense>
+                <v-col cols="12" md="4">
+                  <p class="text-caption">NIT</p>
+                  <p :class="!form.cliente.nit && 'text-error font-weight-bold'">{{ form.cliente.nit || 'REQUERIDO' }}</p>
+                </v-col>
+                <v-col cols="12" md="4">
+                  <p class="text-caption">NRC</p>
+                  <p :class="!form.cliente.nrc && 'text-error font-weight-bold'">{{ form.cliente.nrc || 'REQUERIDO' }}</p>
+                </v-col>
+                <v-col cols="12" md="4">
+                  <p class="text-caption">Nombre Comercial</p>
+                  <p :class="!form.cliente.nombre_comercial && 'text-error font-weight-bold'">{{ form.cliente.nombre_comercial || 'REQUERIDO' }}</p>
+                </v-col>
+                <v-col cols="12" md="8">
+                  <p class="text-caption">Actividad Económica</p>
+                  <p :class="!form.cliente.desc_actividad && 'text-error font-weight-bold'">{{ form.cliente.desc_actividad || 'REQUERIDO' }}</p>
+                </v-col>
+                <v-col cols="12" md="4">
+                  <p class="text-caption">Correo Electrónico</p>
+                  <p :class="!form.cliente.correo && 'text-error font-weight-bold'">{{ form.cliente.correo || 'REQUERIDO' }}</p>
+                </v-col>
+              </v-row>
+            </v-card>
+  
+            <!-- <v-row>
+              <v-col>
+                <v-checkbox
+                  v-model="esVentaTercero"
+                  label="¿Es una Venta por Cuenta de Tercero?"
+                ></v-checkbox>
+              </v-col>
+            </v-row> -->
+  
+            <!-- <v-card v-if="esVentaTercero" variant="tonal" class="mb-6 pa-4">
+              <h3 class="mb-4 text-h6">Datos del Tercero (Mandante)</h3>
+              <v-autocomplete
+                v-model="mandante"
+                :items="mandanteResults"
+                v-model:search="mandanteSearchTerm"
+                :loading="mandanteSearchLoading"
+                item-title="nombre"
+                return-object
+                label="Buscar Tercero (por Nombre, NIT o NRC)"
                 variant="outlined"
-                @keydown.enter="saveEdit" 
-              ></v-text-field>
-            </v-col>
+                placeholder="Escriba para buscar un cliente..."
+                no-filter
+                clearable
+              >
+                <template v-slot:item="{ props, item }">
+                  <v-list-item v-bind="props" :title="item.raw.nombre" :subtitle="`NIT: ${item.raw.nit}`"></v-list-item>
+                </template>
+              </v-autocomplete>
+            </v-card> -->
+            <!-- <v-divider class="my-6"></v-divider> -->
             
-            <v-col cols="6">
-              <v-select 
-                v-model="editedItem.tipoItem" 
-                :items="tiposDeItem" 
-                label="Tipo" 
-                item-title="title" item-value="value"
-                variant="outlined" density="compact"
-              ></v-select>
-            </v-col>
-            
-            <v-col cols="6">
-              <v-autocomplete 
-                v-model="editedItem.uniMedida" 
-                :items="unidadesDeMedida" 
-                label="Unidad" 
-                item-title="title" item-value="value"
-                variant="outlined" density="compact"
-              ></v-autocomplete>
-            </v-col>
-
-            <v-col cols="6">
-              <v-text-field 
-                v-model.number="editedItem.cantidad" 
-                label="Cantidad" type="number"
-                variant="outlined" density="compact"
-                @keydown.enter="saveEdit"
-              ></v-text-field>
-            </v-col>
-
-            <v-col cols="6">
-              <v-text-field 
-                v-model.number="editedItem.precio_unitario" 
-                label="Precio Unitario" type="number" prefix="$"
-                variant="outlined" density="compact"
-                @keydown.enter="saveEdit"
-              ></v-text-field>
-            </v-col>
-            
-            <v-col cols="12">
-              <v-checkbox 
-                v-model="editedItem.esExento" 
-                label="Venta Exenta" 
-                color="primary"
-                density="compact"
-                hide-details
-                @keydown.enter="saveEdit"
-              ></v-checkbox>
-            </v-col>
-          </v-row>
+            <div v-if="form.tipo_dte === '03' && form.cliente?.id" class="mb-4">
+              <p class="text-caption">Datos del Cliente Seleccionado:</p>
+              <v-row dense>
+                <v-col cols="12" md="4"><v-text-field :model-value="form.cliente.nit" label="NIT" variant="underlined" readonly density="compact"></v-text-field></v-col>
+                <v-col cols="12" md="4"><v-text-field :model-value="form.cliente.nrc" label="NRC" variant="underlined" readonly density="compact"></v-text-field></v-col>
+                <v-col cols="12" md="4"><v-text-field :model-value="form.cliente.correo" label="Correo" variant="underlined" readonly density="compact"></v-text-field></v-col>
+              </v-row>
+            </div>
+  
+            <div v-if="form.tipo_dte !== '07'">
+              <h3 class="mt-8">Ítems</h3>
+              <v-divider class="mb-4"></v-divider>
+              <!-- <v-row v-if="(form.tipo_dte === '03' || form.tipo_dte === '01') && form.cliente?.categoria_contribuyente === 'GRANDE'">
+                  <v-col cols="12">
+                      <v-switch
+                          v-model="aplicaRetencion"
+                          label="Aplicar Retención 1% (Ventas gravadas >= $100)"
+                          color="primary"
+                          hide-details
+                      ></v-switch>
+                  </v-col>
+              </v-row> -->
+              <v-row align="center">
+                <v-col cols="12" md="4">
+                  <v-combobox
+                      v-if="authStore.user?.empresa?.usa_inventario"
+                      v-model="newItem.descripcion"
+                      label="Buscar por Nombre, SKU o Escanear Barcode"
+                      placeholder="Escribe o escanea aquí..."
+                      prepend-inner-icon="mdi-barcode-scan"
+                      :items="searchedProducts"
+                      item-title="nombre"
+                      item-value="id"
+                      @update:search="searchProducts"
+                      :loading="isSearching"
+                      no-filter
+                      @update:model-value="productSelected"
+                      @keydown.enter.prevent 
+                      variant="outlined"
+                      density="compact"
+                      hide-details="auto"
+                      return-object
+                      clearable
+                  >
+                    <template v-slot:prepend-inner>
+                      <v-chip
+                          v-if="newItem.codigo"
+                          class="ma-1"
+                          color="blue-grey-lighten-4"
+                          text-color="blue-grey-darken-3"
+                          size="small"
+                          label
+                          variant="flat"
+                      >
+                          <strong>{{ newItem.codigo }}</strong>
+                      </v-chip>
+                  </template>
+  
+                    <template v-slot:item="{ props, item }">
+                        <v-list-item v-bind="props" lines="two">
+                            <v-list-item-title class="font-weight-bold">
+                                {{ item.raw.nombre }}
+                            </v-list-item-title>
+                            
+                            <v-list-item-subtitle class="d-flex align-center mt-1">
+                                <span v-if="item.raw.barcode" class="mr-3 text-high-emphasis">
+                                    <v-icon size="x-small" start>mdi-barcode</v-icon> 
+                                    {{ item.raw.barcode }}
+                                </span>
+                                <span v-else-if="item.raw.sku" class="mr-3 text-medium-emphasis">
+                                    <v-icon size="x-small" start>mdi-label-outline</v-icon> 
+                                    SKU: {{ item.raw.sku }}
+                                </span>
+                                
+                                <v-chip size="x-small" color="green" class="mr-2" variant="outlined">
+                                    ${{ parseFloat(item.raw.precio_unitario).toFixed(2) }}
+                                </v-chip>
+                                
+                                <span class="text-caption text-disabled">
+                                    (Int: {{ item.raw.codigo }})
+                                </span>
+                            </v-list-item-subtitle>
+                        </v-list-item>
+                    </template>
+                    
+                    <template v-slot:no-data>
+                        <v-list-item>
+                            <v-list-item-title>
+                                No se encontraron productos.
+                            </v-list-item-title>
+                            <v-list-item-subtitle>
+                                Presiona Enter para agregar como texto libre.
+                            </v-list-item-subtitle>
+                        </v-list-item>
+                    </template>
+                  </v-combobox>
+                  <v-text-field
+                    v-else
+                    v-model="newItem.descripcion"
+                    label="Descripción"
+                    variant="outlined"
+                    density="compact"
+                    hide-details="auto"
+                  ></v-text-field>
+                </v-col>
+                <v-col cols="6" md="3" lg="2">
+                  <v-select v-model="newItem.tipoItem" :items="tiposDeItem" label="Tipo" variant="outlined" density="compact" hide-details="auto"></v-select>
+                </v-col>
+                
+                <v-col cols="6" md="3" lg="2">
+                  <v-select v-model="newItem.uniMedida" :items="unidadesDeMedida" item-title="title" item-value="value" label="U. Medida" variant="outlined" density="compact" hide-details="auto"></v-select>
+                </v-col>
+                
+                <v-col cols="12" md="2">
+                  <v-text-field v-model.number="newItem.cantidad" label="Cantidad" type="number" variant="outlined" density="compact" hide-details="auto"></v-text-field>
+                </v-col>
+                
+                <v-col cols="12" md="3" lg="2">
+                  <v-text-field v-model.number="newItem.precio_unitario" :label="precioUnitarioLabel" type="number" prefix="$" variant="outlined" density="compact" hide-details="auto"></v-text-field>
+                </v-col>
+                
+                <v-col cols="12" sm="4" md="3" class="d-flex align-center mt-2 mt-sm-0">
+                  <v-chip
+                    v-if="clienteEsExentoGlobal"
+                    color="teal"
+                    text-color="white"
+                    label
+                    prepend-icon="mdi-check-decagram"
+                    class="mr-4"
+                  >
+                    Exento
+                  </v-chip>
+                  
+                  <v-checkbox
+                    v-else
+                    v-model="newItem.esExento"
+                    label="Venta Exenta"
+                    color="primary"
+                    hide-details
+                  ></v-checkbox>
+                  
+                  <v-btn class="ml-auto" color="primary" @click="addItem" prepend-icon="mdi-plus" size="large">Añadir</v-btn>
+                </v-col>
+              </v-row>
+  
+              <v-table v-if="form.items.length > 0" density="compact" class="mt-4 border">
+                <thead>
+                  <tr>
+                    <th class="text-left">Descripción</th>
+                    <th class="text-center">Tipo</th>
+                    <th class="text-center">U. Medida</th>
+                    <th class="text-center">Cantidad</th>
+                    <th class="text-center">P. Unitario</th>
+                    <th class="text-right">Subtotal</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(item, index) in form.items" :key="index">
+                    <td>{{ item.descripcion }}</td>
+                    <td class="text-caption text-center" style="vertical-align: middle;">
+                      {{ item.tipoItem === 1 ? 'Bien' : 'Servicio' }}
+                    </td>
+                     
+                    <td class="text-caption text-center" style="vertical-align: middle;">
+                      {{ getUnidadMedidaNombre(item.uniMedida) }}
+                    </td>
+                     
+                    <td class="text-caption text-center" style="vertical-align: middle;">
+                      {{ item.cantidad }}
+                    </td>
+                     <!-- <td style="width: 120px;">
+                        <v-text-field
+                          v-model.number="item.cantidad"
+                          type="number"
+                          variant="underlined"
+                          density="compact"
+                          hide-details
+                          min="0.01"
+                          class="centered-input"
+                        ></v-text-field>
+                      </td> -->
+                     <td class="text-caption text-center" style="vertical-align: middle;">
+                      ${{ item.precio_unitario.toFixed(2) }}
+                     </td>
+                     
+                    <td class="text-caption text-right" style="vertical-align: middle;">
+                      ${{ (item.cantidad * item.precio_unitario).toFixed(2) }}
+                    </td>
+                    <!-- <td><v-btn icon="mdi-delete" variant="text" color="error" size="x-small" @click="removeItem(index)"></v-btn></td> -->
+                    <td class="d-flex align-center justify-end">
+                      <v-btn icon="mdi-pencil" variant="text" color="primary" size="small" @click="editItem(item, index)"></v-btn>
+                      <v-btn icon="mdi-delete" variant="text" color="error" size="small" @click="removeItem(index)"></v-btn>
+                    </td>
+                  </tr>
+                </tbody>
+                <tfoot v-if="subtotales.total > 0">
+          
+                  <tr v-if="form.tipo_dte !== '01'">
+                      <td colspan="5" class="text-center font-weight-bold">SUBTOTAL</td>
+                      <td class="text-center font-weight-bold">${{ subtotales.subTotal.toFixed(2) }}</td>
+                      <td></td>
+                  </tr>
+  
+                  <tr v-if="form.tipo_dte === '03'">
+                      <td colspan="5" class="text-center font-weight-bold">IVA (13%)</td>
+                      <td class="text-center font-weight-bold">${{ subtotales.iva.toFixed(2) }}</td>
+                      <td></td>
+                  </tr>
+  
+                  <tr v-if="aplicaRetencion">
+                      <td colspan="5" class="text-center font-weight-bold text-error">IVA RETENIDO (1%)</td>
+                      <td class="text-center font-weight-bold text-error">- ${{ ivaRetenidoCalculado.toFixed(2) }}</td>
+                      <td></td>
+                  </tr>
+  
+                  <tr v-if="rentaRetenidaCalculada > 0">
+                    <td colspan="5" class="text-center font-weight-bold text-error">RENTA RETENIDA (10%)</td>
+                    <td class="text-center font-weight-bold text-error">- ${{ rentaRetenidaCalculada.toFixed(2) }}</td>
+                    <td></td>
+                  </tr>
+  
+                  <tr v-if="aplicaRetencion">
+                      <td colspan="5" class="text-center">
+                          <v-chip color="info" label size="small">
+                              <v-icon start icon="mdi-information-outline"></v-icon>
+                              Retención Automática (Gran Contribuyente)
+                          </v-chip>
+                      </td>
+                      <td class="text-center font-weight-bold text-error">- ${{ ivaRetenidoCalculado.toFixed(2) }}</td>
+                      <td></td>
+                  </tr>
+                  
+                  <tr>
+                      <td colspan="5" class="text-center text-h6 font-weight-black">
+                          {{ aplicaRetencion ? 'TOTAL A PAGAR' : 'TOTAL' }}
+                      </td>
+                      <td class="text-center text-h6 font-weight-black">${{ totalAPagar.toFixed(2) }}</td>
+                      <td></td>
+                  </tr>
+  
+              </tfoot>
+              </v-table>
+            </div>
+            <v-card class="mt-6" v-if="form.tipo_dte === '07'">
+            <v-card-title>Documentos a los que se Aplica Retención</v-card-title>
+            <v-divider></v-divider>
+            <v-card-text>
+              <v-table>
+                <thead>
+                  <tr>
+                    <th>Tipo DTE</th>
+                    <th>Nº Documento</th>
+                    <th>Monto Sujeto Ret.</th>
+                    <th class="text-center">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(doc, index) in form.documentos_retenidos" :key="index">
+                    <td>{{ doc.tipoDte }}</td>
+                    <td>{{ doc.numeroDocumento }}</td>
+                    <td>${{ doc.montoSujetoGrav }}</td>
+                    <td>
+                      <v-btn icon="mdi-delete" size="x-small" color="error" @click="eliminarDocumentoRetenido(index)"></v-btn>
+                    </td>
+                  </tr>
+                  <tr v-if="form.documentos_retenidos.length === 0">
+                      <td colspan="4" class="text-center">Añada un documento para aplicar retención...</td>
+                  </tr>
+                </tbody>
+              </v-table>
+  
+              <v-divider class="my-4"></v-divider>
+  
+              <p class="mb-4 font-weight-bold">Añadir Documento:</p>
+              <v-row>
+                  <v-col cols="12" md="3">
+                      <v-select label="Tipo DTE afectado" :items="[{title: 'CCF', value: '03'}]" v-model="nuevoDocRetenido.tipoDte" variant="outlined"></v-select>
+                  </v-col>
+                  <v-col cols="12" md="3">
+                      <v-select label="Tipo Generación" :items="[{title: 'Electrónico', value: 2}, {title: 'Físico', value: 1}]" v-model="nuevoDocRetenido.tipoDoc" variant="outlined"></v-select>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                      <v-text-field label="Nº Documento o Código Generación" v-model="nuevoDocRetenido.numeroDocumento" variant="outlined"></v-text-field>
+                  </v-col>
+                  <v-col cols="12" md="3">
+                      <v-text-field type="date" label="Fecha Emisión" v-model="nuevoDocRetenido.fechaEmision" variant="outlined"></v-text-field>
+                  </v-col>
+                  <v-col cols="12" md="3">
+                      <v-text-field type="number" label="Monto Sujeto a Retención" v-model="nuevoDocRetenido.montoSujetoGrav" prefix="$" variant="outlined"></v-text-field>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                      <v-text-field label="Descripción" v-model="nuevoDocRetenido.descripcion" variant="outlined"></v-text-field>
+                  </v-col>
+              </v-row>
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn color="primary" @click="agregarDocumentoRetenido">Añadir Documento</v-btn>
+            </v-card-actions>
+          </v-card>
+          </v-form>
         </v-card-text>
-        
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey-darken-1" variant="text" @click="closeEdit">Cancelar</v-btn>
-          <v-btn color="primary" variant="text" @click="saveEdit">Guardar Cambios</v-btn>
+        <v-divider></v-divider>
+        <v-card-actions class="pa-4 d-flex flex-column flex-sm-row align-center">
+          <div class="flex-grow-1 w-100 order-sm-first order-first">
+            <v-expand-transition>
+              <div :key="validationErrors.length">
+                <v-alert
+                  v-if="validationErrors.length > 0"
+                  type="warning"
+                  variant="tonal"
+                  density="compact"
+                  class="text-body-2 text-sm-body-1"
+                >
+                  <div class="font-weight-bold mb-1">Recuerde completar los siguientes datos para poder emitir:</div>
+                  <ul class="pl-4">
+                    <li v-for="(error, i) in validationErrors" :key="i">
+                      {{ error }}
+                    </li>
+                  </ul>
+                </v-alert>
+  
+                <v-alert
+                  v-else
+                  type="success"
+                  variant="tonal"
+                  density="compact"
+                  class="text-body-2 text-sm-body-1"
+                >
+                  <div class="d-flex align-center font-weight-bold">
+                    <v-icon start>mdi-check-circle-outline</v-icon>
+                    ¡Todo listo para emitir su documento!
+                  </div>
+                </v-alert>
+              </div>
+            </v-expand-transition>
+          </div>
+          <v-switch 
+              v-modeltch
+              v-if="authStore.user?.roles?.some(role => role.name === 'Admin')"
+              v-model="form.force_contingency"
+              color="orange-darken-3"
+              label="Enviar en Modo Contingencia"
+              hide-details
+              class="mb-4"
+            ></v-switch>
+          <div class="w-100 w-sm-auto mt-4 mt-sm-0 d-flex justify-center order-sm-last order-last">
+            <v-btn 
+              color="success" 
+              size="large" 
+              @click="submitDTE" 
+              :disabled="validationErrors.length > 0 || loading" 
+              :loading="loading"
+              block
+              max-width="300" 
+            >
+              Emitir Documento
+            </v-btn>
+          </div>
         </v-card-actions>
       </v-card>
-     </v-dialog>
-     <TicketDTE 
-        ref="ticketRef"
-        :dte-data="datosFacturaExitosa"
-        :items="form.items"
-        :receptor="form.cliente || { nombre: 'Clientes Varios' }"
-        :emisor="authStore.user.empresa" 
-        :resumen="resumenTicketSnapshot"
-      />
-  </v-container>
+    </v-container>
+    <v-container>
+       <TicketDTE 
+          ref="ticketRef"
+          :dte-data="datosFacturaExitosa"
+          :items="form.items"
+          :receptor="form.cliente || { nombre: 'Clientes Varios' }"
+          
+          :emisor="authStore.user?.empresa || {}" 
+          
+          :resumen="resumenTicketSnapshot"
+        />
+  
+       <v-dialog v-model="editDialog" max-width="500px">
+        <v-card>
+          <v-card-title>Editar Detalle</v-card-title>
+          <v-card-text>
+            <v-row dense>
+              <v-col cols="12">
+                <v-text-field 
+                  v-model="editedItem.descripcion" 
+                  label="Descripción" 
+                  variant="outlined"
+                  @keydown.enter="saveEdit" 
+                ></v-text-field>
+              </v-col>
+              
+              <v-col cols="6">
+                <v-select 
+                  v-model="editedItem.tipoItem" 
+                  :items="tiposDeItem" 
+                  label="Tipo" 
+                  item-title="title" item-value="value"
+                  variant="outlined" density="compact"
+                ></v-select>
+              </v-col>
+              
+              <v-col cols="6">
+                <v-autocomplete 
+                  v-model="editedItem.uniMedida" 
+                  :items="unidadesDeMedida" 
+                  label="Unidad" 
+                  item-title="title" item-value="value"
+                  variant="outlined" density="compact"
+                ></v-autocomplete>
+              </v-col>
+  
+              <v-col cols="6">
+                <v-text-field 
+                  v-model.number="editedItem.cantidad" 
+                  label="Cantidad" type="number"
+                  variant="outlined" density="compact"
+                  @keydown.enter="saveEdit"
+                ></v-text-field>
+              </v-col>
+  
+              <v-col cols="6">
+                <v-text-field 
+                  v-model.number="editedItem.precio_unitario" 
+                  label="Precio Unitario" type="number" prefix="$"
+                  variant="outlined" density="compact"
+                  @keydown.enter="saveEdit"
+                ></v-text-field>
+              </v-col>
+              
+              <v-col cols="12">
+                <v-checkbox 
+                  v-model="editedItem.esExento" 
+                  label="Venta Exenta" 
+                  color="primary"
+                  density="compact"
+                  hide-details
+                  @keydown.enter="saveEdit"
+                ></v-checkbox>
+              </v-col>
+            </v-row>
+          </v-card-text>
+          
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn color="grey-darken-1" variant="text" @click="closeEdit">Cancelar</v-btn>
+            <v-btn color="primary" variant="text" @click="saveEdit">Guardar Cambios</v-btn>
+          </v-card-actions>
+        </v-card>
+       </v-dialog>
+       <TicketDTE 
+          ref="ticketRef"
+          :dte-data="datosFacturaExitosa"
+          :items="form.items"
+          :receptor="form.cliente || { nombre: 'Clientes Varios' }"
+          :emisor="authStore.user.empresa" 
+          :resumen="resumenTicketSnapshot"
+        />
+    </v-container>
+  </div>
 </template>
 
 
