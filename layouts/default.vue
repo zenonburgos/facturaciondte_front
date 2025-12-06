@@ -61,7 +61,7 @@
           <v-divider></v-divider>
 
           <v-list nav :disabled="isUIBlocked">
-            <v-list-item prepend-icon="mdi-view-dashboard" title="Dashboard" value="dashboard" to="/"></v-list-item>
+            <v-list-item prepend-icon="mdi-view-dashboard" title="Dashboard" value="dashboard" to="/panel"></v-list-item>
             <v-list-item 
               title="Emitir DTE" 
               value="emitir" 
@@ -123,6 +123,17 @@
               >
                 <template v-slot:prepend>
                   <v-icon color="primary">mdi-archive-arrow-down-outline</v-icon>
+                </template>
+              </v-list-item>
+
+              <v-list-item
+                v-if="userHasRole(['Admin', 'Super Administrador'])"
+                title="Configuraciones"
+                value="configuraciones"
+                to="/configuraciones"
+              >
+                <template v-slot:prepend>
+                  <v-icon color="primary">mdi-cog-outline</v-icon>
                 </template>
               </v-list-item>
             </template>
@@ -283,7 +294,7 @@ const drawer = ref(true);
 const isRefreshing = ref(false);
 
 const router = useRouter();
-const goToDashboard = () => router.push('/');
+const goToDashboard = () => router.push('/panel');
 
 const companyLogoUrl = computed(() => {
   const logoPath = authStore.user?.empresa?.logo_path;

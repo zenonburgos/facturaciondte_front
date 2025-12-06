@@ -180,7 +180,7 @@ async function handleLogin() {
     if (user) {
       // 3. ...redirigimos SIEMPRE al dashboard del frontend.
       // La responsabilidad de ir a Filament ahora recae en el botón del layout.
-      const redirectPath = route.query.redirect ? decodeURIComponent(route.query.redirect) : '/';
+      const redirectPath = route.query.redirect ? decodeURIComponent(route.query.redirect) : '/panel';
       router.push(redirectPath);
     }
   } catch (e) {

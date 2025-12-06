@@ -5,6 +5,7 @@ export default defineNuxtRouteMiddleware((to) => {
 
   // 1. La Lista de Invitados: Simple y explícita para rutas estáticas.
   const publicRoutes = [
+    '/',
     '/login', 
     '/register',
     // Si tienes una página de "olvidé mi contraseña", añádela aquí
