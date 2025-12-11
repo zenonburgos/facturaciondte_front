@@ -333,14 +333,25 @@ const companyLink = computed(() => {
 
 const showHistoryMenu = computed(() => {
   const userRole = authStore.user?.role;
-  // 1. Si es jefe, ve todo.
-  const isBoss = ['Admin', 'Encargado de Negocio', 'Super Administrador'].includes(userRole);
+  
+  // 1. CORRECCIÓN: Usar los nombres EXACTOS de tu DB (Gerente Tienda, Contador).
+  // Al agregar 'Gerente Tienda' aquí, él saltará directo al 'return true' y verá todo.
+  const isBoss = [
+      'Admin', 
+      'Super Administrador', 
+      'Gerente Tienda', 
+      'Contador' 
+  ].includes(userRole);
+
   if (isBoss) return true;
 
-  // 2. Si no es jefe (es Cajero o cualquier otro mortal), obedece al switch.
-  // Si restringir es true, devolvemos false (no ve).
-  // Si restringir es false/null, devolvemos true (sí ve).
+  // 2. Lógica para el Cajero (Rol 3)
+  // Si 'restringir_dashboard_cajeros' es true (1), devolvemos false (NO VE).
+  // Si 'restringir_dashboard_cajeros' es false (0), devolvemos true (SÍ VE).
   const restricted = authStore.user?.empresa?.restringir_dashboard_cajeros;
+  
+  // OJO: Si restricted viene nulo o undefined, !restricted será true (lo deja ver).
+  // Si quieres que por seguridad se oculte si falla la carga, usa: return restricted === false;
   return !restricted; 
 });
 

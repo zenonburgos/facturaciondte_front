@@ -104,21 +104,26 @@ const notificationStore = useNotificationStore();
 const authStore = useAuthStore();
 
 const canViewFinancials = computed(() => {
-  const userRole = authStore.user?.role; // Ajusta según donde guardes el rol
-  const empresaConfig = authStore.user?.empresa || {}; // Ajusta según tu estructura de Auth
-  
-  // 1. Los "Jefes" SIEMPRE ven todo, sin importar la restricción
-  const isBoss = ['Admin', 'Encargado de Negocio', 'Super Administrador'].includes(userRole);
+  const userRole = authStore.user?.role; 
+  const empresaConfig = authStore.user?.empresa || {};
+
+  // 1. CORRECCIÓN: Usar los nombres EXACTOS de tu Base de Datos
+  // Agregamos 'Gerente Tienda' y 'Contador' a la lista de "Jefes" que pueden ver todo siempre.
+  const isBoss = [
+      'Admin', 
+      'Super Administrador', 
+      'Gerente Tienda', 
+      'Contador' // Asumo que el contador también debe ver los números
+  ].includes(userRole);
+
   if (isBoss) return true;
 
-  // 2. Si NO es jefe (es Cajero), revisamos la configuración de la empresa
-  // Si 'restringir_dashboard_cajeros' es true, entonces NO puede ver (return false)
-  // Si es false, SÍ puede ver (return true)
+  // 2. Si no es jefe (es Cajero o Demo), aplicamos la restricción
+  // Si restringir es true (1), devolvemos false (ocultar)
   if (empresaConfig.restringir_dashboard_cajeros) {
       return false; 
   }
 
-  // 3. Comportamiento por defecto para cajeros si no hay restricción activada
   return true; 
 });
 
