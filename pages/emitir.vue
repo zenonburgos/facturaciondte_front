@@ -984,16 +984,51 @@ const totalAPagar = computed(() => {
 
 // --- PROPIEDADES COMPUTADAS GENERALES ---
 const subtotales = computed(() => {
-  const total = form.value.items.reduce((acc, item) => acc + (item.cantidad * item.precio_unitario), 0);
+  // 1. Detectamos el modo de cálculo del cliente
+  const usarCalculoUnitario = form.value.cliente?.usar_calculo_unitario || false;
+
+  // 2. Calculamos el total acumulado
+  const total = form.value.items.reduce((acc, item) => {
+    const cantidad = parseFloat(item.cantidad) || 0;
+    const precioConIva = parseFloat(item.precio_unitario) || 0;
+
+    // IMPORTANTE: Si es exento, no aplicamos desglose de IVA
+    if (item.esExento) {
+      return acc + (cantidad * precioConIva);
+    }
+
+    if (usarCalculoUnitario) {
+      // --- LÓGICA CLIENTE EXIGENTE ($7.77) ---
+      // 1. Base unitaria redondeada (1.25 / 1.13 = 1.11)
+      let baseUnit = precioConIva / 1.13;
+      baseUnit = Math.round(baseUnit * 100) / 100; 
+
+      // 2. Subtotal de la línea Base (1.11 * 7 = 7.77)
+      const subTotalLinea = baseUnit * cantidad;
+
+      // 3. Reconstruimos el total con IVA para sumar (7.77 * 1.13 = 8.78)
+      return acc + (subTotalLinea * 1.13); 
+
+    } else {
+      // --- LÓGICA ESTÁNDAR ($7.74) ---
+      // Suma directa del precio bruto (1.25 * 7 = 8.75)
+      return acc + (cantidad * precioConIva);
+    }
+  }, 0);
   
   if (total === 0) {
     return { subTotal: 0, iva: 0, total: 0 };
   }
 
+  // 3. Desglosamos para el footer
   const baseImponible = total / 1.13;
   const iva = total - baseImponible;
   
-  return { subTotal: baseImponible, iva: iva, total: total };
+  return { 
+    subTotal: baseImponible, 
+    iva: iva, 
+    total: total 
+  };
 });
 
 const precioUnitarioLabel = computed(() => 'Precio Unitario (con IVA)');
@@ -1252,7 +1287,59 @@ async function submitDTE() {
   error.value = null;
 
   try {
-    const payload = { ...form.value };
+    const payload = JSON.parse(JSON.stringify(form.value));
+
+    const usarCalculoUnitario = form.value.cliente?.usar_calculo_unitario || false;
+
+    // Recorremos los ítems para recalcular matemáticamente antes de enviar
+    if (payload.items && payload.items.length > 0) {
+      payload.items = payload.items.map(item => {
+        const cantidad = parseFloat(item.cantidad);
+        const precioInputConIva = parseFloat(item.precio_unitario); // El precio que escribió el cajero ($1.25)
+        
+        // Si es exento, no hacemos desglose de IVA
+        if (item.esExento) {
+           return item;
+        }
+
+        let precioUniSinIva;
+        let ventaGravada;
+
+        if (usarCalculoUnitario) {
+          // --- MÉTODO B: CLIENTE EXIGENTE (Línea por Línea) ---
+          // 1. Quitamos IVA al unitario y REDONDEAMOS YA (2 decimales)
+          let baseUnit = precioInputConIva / 1.13;
+          baseUnit = Math.round(baseUnit * 100) / 100; // Ej: 1.11
+
+          // 2. Multiplicamos por cantidad
+          ventaGravada = baseUnit * cantidad; // Ej: 1.11 * 7 = 7.77
+          
+          // 3. El precio para el JSON es el redondeado
+          precioUniSinIva = baseUnit;
+
+        } else {
+          // --- MÉTODO A: ESTÁNDAR (Sobre el Total) ---
+          // 1. Calculamos total bruto
+          const totalBruto = precioInputConIva * cantidad; // 8.75
+
+          // 2. Quitamos IVA al total
+          let baseTotal = totalBruto / 1.13; 
+          ventaGravada = Number(baseTotal.toFixed(2)); // 7.74
+
+          // 3. Calculamos unitario preciso para que cuadre la reversa
+          precioUniSinIva = Number((ventaGravada / cantidad).toFixed(6)); // 1.1057...
+        }
+
+        // Sobreescribimos los valores en el payload para el JSON
+        return {
+          ...item,
+          precio_unitario: precioUniSinIva, // Hacienda recibe esto sin IVA
+          venta_gravada: ventaGravada,      // Hacienda recibe esto como subtotal línea
+          // Guardamos el precio original por si acaso (opcional)
+          precio_con_iva: precioInputConIva 
+        };
+      });
+    }
 
     payload.iva_retenido = ivaRetenidoCalculado.value;
 

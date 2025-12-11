@@ -46,26 +46,30 @@
     </v-alert>
     
     <v-row>
-      <v-col cols="12" md="6">
-        <NuxtLink :to="{ path: '/historial', query: { month: selectedMonth } }" class="text-decoration-none">
-        <v-card class="pa-2" elevation="2" hover>
-          <div class="d-flex align-center">
-            <v-avatar color="blue-lighten-4" size="62" class="mr-4">
-              <v-icon color="blue-darken-2">mdi-file-document-multiple-outline</v-icon>
-            </v-avatar>
-            <div>
-              <p class="text-caption">DTEs Procesados ({{ formattedDisplayMonth }})</p>
-              <p class="text-h4 font-weight-bold">
-                <span v-if="!loading">{{ summary.dtes_del_mes }}</span>
-                <v-progress-circular v-else indeterminate size="32"></v-progress-circular>
-              </p>
+      <v-col cols="12" :md="canViewFinancials ? 6 : 12">
+        <component 
+          :is="canViewFinancials ? 'NuxtLink' : 'div'" 
+          :to="canViewFinancials ? { path: '/historial', query: { month: selectedMonth } } : null" 
+          class="text-decoration-none"
+        >
+          <v-card class="pa-2" elevation="2" :hover="canViewFinancials">
+            <div class="d-flex align-center">
+              <v-avatar color="blue-lighten-4" size="62" class="mr-4">
+                <v-icon color="blue-darken-2">mdi-file-document-multiple-outline</v-icon>
+              </v-avatar>
+              <div>
+                <p class="text-caption">DTEs Procesados ({{ formattedDisplayMonth }})</p>
+                <p class="text-h4 font-weight-bold">
+                  <span v-if="!loading">{{ summary.dtes_del_mes }}</span>
+                  <v-progress-circular v-else indeterminate size="32"></v-progress-circular>
+                </p>
+              </div>
             </div>
-          </div>
-        </v-card>
-        </NuxtLink>
+          </v-card>
+        </component>
       </v-col>
 
-      <v-col cols="12" md="6">
+      <v-col cols="12" md="6" v-if="canViewFinancials">
         <NuxtLink :to="{ path: '/historial', query: { month: selectedMonth } }" class="text-decoration-none">
         <v-card class="pa-2" elevation="2" hover>
           <div class="d-flex align-center">
@@ -92,8 +96,24 @@ import { ref, onMounted, computed, watch } from 'vue';
 import { useNuxtApp } from '#app';
 import { useNotificationStore } from '~/stores/notifications';
 
+import { useAuthStore } from '~/stores/auth';
+
 const { $api } = useNuxtApp();
 const notificationStore = useNotificationStore();
+
+const authStore = useAuthStore();
+
+const canViewFinancials = computed(() => {
+  // Asumiendo que tienes un método userHasRole en el store, o verificando el rol directamente
+  // Si tu store no tiene userHasRole, usa: ['Admin', 'Encargado de Negocio'].includes(authStore.user?.role?.name)
+  const allowedRoles = ['Admin', 'Encargado de Negocio', 'Super Administrador'];
+  
+  // Opción A: Si tienes la función helper userHasRole global o en el store
+  // return authStore.userHasRole(allowedRoles); 
+
+  // Opción B (Más segura si no estás seguro del helper): Verificar directamente el rol del usuario
+  return authStore.user && allowedRoles.includes(authStore.user.role); 
+});
 
 const loading = ref(true);
 const summary = ref({

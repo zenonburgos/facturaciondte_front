@@ -95,6 +95,16 @@
                       inset
                   ></v-switch>
               </v-col>
+              <v-col cols="12">
+                <v-switch
+                  v-model="editedItem.usar_calculo_unitario"
+                  color="primary"
+                  label="Cálculo Detallista (Redondear Precio Unitario)"
+                  hint="Calcula el IVA línea por línea redondeando antes. Aumenta la precisión unitaria pero puede variar el total."
+                  persistent-hint
+                  density="compact"
+                ></v-switch>
+              </v-col>
             </v-row>
             <v-divider class="my-4"></v-divider>
             <h4 class="mt-4">Dirección</h4>
@@ -215,7 +225,7 @@ const defaultItem = {
   nombre: '', nit: '', nrc: '', correo: '', nombre_comercial: '',
   cod_actividad: '', desc_actividad: '', telefono: '',
   direccion: { departamento: null, municipio: null, complemento: '' },
-  tipo_documento: null, num_documento: null
+  tipo_documento: null, num_documento: null, usar_calculo_unitario: false,
 };
 const editedItem = ref({ ...defaultItem });
 const form = ref(null);
@@ -373,6 +383,8 @@ function openEditDialog(item) {
 
     editedItem.value.es_exento = !!editedItem.value.es_exento;
 
+    editedItem.value.usar_calculo_unitario = !!editedItem.value.usar_calculo_unitario;
+
     // Aseguramos que el objeto 'direccion' exista
     if (!editedItem.value.direccion) {
         editedItem.value.direccion = { departamento: null, municipio: null, complemento: '' };
@@ -485,6 +497,7 @@ async function confirmDelete() {
         deleteDialog.value.loading = false;
     }
 }
+
 
 function getFriendlyCategoria(categoria) {
   // Si no hay categoría, devuelve un texto por defecto.

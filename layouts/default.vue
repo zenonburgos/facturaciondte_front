@@ -72,6 +72,7 @@
               </template>
             </v-list-item>
             <v-list-item 
+              v-if="userHasRole(['Admin', 'Encargado de Negocio', 'Super Administrador'])"
               title="Historial" 
               value="historial" 
               to="/historial"
