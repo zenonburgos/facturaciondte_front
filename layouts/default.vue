@@ -72,7 +72,7 @@
               </template>
             </v-list-item>
             <v-list-item 
-              v-if="userHasRole(['Admin', 'Encargado de Negocio', 'Super Administrador'])"
+              v-if="showHistoryMenu"
               title="Historial" 
               value="historial" 
               to="/historial"
@@ -329,6 +329,19 @@ const companyLink = computed(() => {
     return '/gestion/empresa';
   }
   return null; // No será un enlace para otros roles
+});
+
+const showHistoryMenu = computed(() => {
+  const userRole = authStore.user?.role;
+  // 1. Si es jefe, ve todo.
+  const isBoss = ['Admin', 'Encargado de Negocio', 'Super Administrador'].includes(userRole);
+  if (isBoss) return true;
+
+  // 2. Si no es jefe (es Cajero o cualquier otro mortal), obedece al switch.
+  // Si restringir es true, devolvemos false (no ve).
+  // Si restringir es false/null, devolvemos true (sí ve).
+  const restricted = authStore.user?.empresa?.restringir_dashboard_cajeros;
+  return !restricted; 
 });
 
 onMounted(() => {
